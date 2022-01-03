@@ -1,0 +1,39 @@
+{
+    # image encoder settings
+    encoder_name: 'clip_resnet_large',
+    adapter_config: {"mlp": {"adapter_type": "normal", "downsample_factor": 4}},
+    freeze_img_encoder: false,
+    
+    # train settings 
+    batch_size: 256,
+    train_steps: 15000,
+    lr: 6.0e-4,
+    min_lr: 0.0,
+    lr_decay_iters: 15000,
+    image_enc_lr: 1.0e-6,
+    use_image_embed_layernorm: true,
+    image_embed_dropout_prob: 0.1, 
+    freeze_img_encoder_batchnorms: false,
+    image_size: 384,
+    
+    gradient_accumulation_steps: 16, #TODO: Change this later
+    zero_stage: 2,
+    gradient_clipping: 1.0,
+
+    # dataset / save / load settings
+    train_dataset_dir: '/mnt/localdisk/nlvr2', 
+    eval_dataset_dir: '/mnt/localdisk/nlvr2',
+    
+    save: "/mnt/shared_vol/checkpoints/multimodal_transformer_nlvr2_classification", 
+    #load: "/mnt/shared_vol/checkpoints/multimodal_transformer_rn50x16_snli_classification",
+
+    eval_every: 100,
+    wandb_project: "multimodal_finetuning",
+    name: "base_nlvr_classification_test",
+
+    dataset_type: "nlvr2",
+
+    #classifier config
+    class_dict: {"num_classes": 2, "pretrained_checkpoint": "/mnt/shared_vol/checkpoints/multimodal_transformer_rn50x16_base_2/global_step15000/mp_rank_00_model_states.pt"}
+
+}

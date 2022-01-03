@@ -1,0 +1,13 @@
+.vscode/settings.json
+.vscode/launch.json
+*.pyc
+wandb/*
+aws*
+*.pt
+*.zip
+*.jpg
+*.png
+*.jpeg
+*.gif
+*.JPEG
+*.json

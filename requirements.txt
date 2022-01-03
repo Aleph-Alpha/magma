@@ -1,0 +1,16 @@
+torchtyping
+typeguard
+git+git://github.com/finetuneanon/transformers.git#egg=transformers
+gdown
+pycocotools
+ftfy 
+regex
+tqdm
+seaborn 
+timm
+git+https://github.com/openai/CLIP.git
+deepspeed
+wandb
+fastapi
+jsonlines
+git+https://github.com/Maluuba/nlg-eval.git@master

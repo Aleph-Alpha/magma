@@ -1,0 +1,28 @@
+{
+    # image encoder settings
+    encoder_name: 'nfresnet50',
+    image_seq_len: 2,
+    freeze_img_encoder: False,
+
+    # train settings 
+    batch_size: 128,
+    train_steps: 150000,
+    lr: 3.0e-4,
+    gradient_accumulation_steps: 8,
+    zero_stage: 2,
+    gradient_clipping: 1.0,
+
+    # dataset / save / load settings
+    train_dataset_name: 'conceptual_captions',
+    train_dataset_dir: '/mnt/localdisk/conceptual_captions',
+    eval_dataset_name: 'coco',
+    eval_dataset_dir: '/mnt/localdisk/coco_data',
+    vqa_dir: "/mnt/localdisk/vqa",
+    gqa_dir: "/mnt/localdisk/gqa",
+
+    save: "/mnt/localdisk/checkpoints/multimodal_transformer_nfresnet_no_adapters_frozen_baseline",
+    load: "/mnt/localdisk/checkpoints/multimodal_transformer_nfresnet_no_adapters_frozen_baseline",
+    wandb_project: "multimodal_ablations",
+    eval_every: 100,
+
+}

@@ -1,0 +1,43 @@
+{
+    #finetune specific settings
+    load_optimizer: false,
+    dataset_type: 'new',
+    
+
+    # image encoder settings
+    encoder_name: 'clip_resnet_large',
+    adapter_config: {"mlp": {"adapter_type": "normal", "downsample_factor": 4}},
+    freeze_img_encoder: false,
+    
+    # train settings 
+    batch_size: 256,
+    train_steps: 5000,
+    lr: 7.0e-4,
+    min_lr: 0.0,
+    lr_decay_iters: 6000,
+    image_enc_lr: 1.5e-6,
+    use_image_embed_layernorm: true,
+    image_embed_dropout_prob: 0.1, 
+    freeze_img_encoder_batchnorms: false,
+    image_size: 384,
+    eval_steps: 256,
+
+    gradient_accumulation_steps: 8,
+    zero_stage: 2,
+    gradient_clipping: 1.0,
+
+    # dataset / save / load settings
+    train_dataset_name: 'conceptual_captions',
+    train_dataset_dir: '/mnt/localdisk/gqa_train_converted',
+    eval_dataset_name: 'coco',
+    eval_dataset_dir: '/mnt/localdisk/gqa_val_converted',
+    
+    vqa_dir: "/mnt/localdisk/vqa_val_converted",
+    gqa_dir: "/mnt/localdisk/gqa_val_converted",
+    
+    save: "/mnt/shared_vol/checkpoints/multimodal_transformer_rn50x16_finetuned_gqa_2",
+    load: "/mnt/shared_vol/checkpoints/multimodal_transformer_rn50x16",
+
+    eval_every: 100,
+    wandb_project: "multimodal_finetuning"
+}

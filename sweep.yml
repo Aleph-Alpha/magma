@@ -1,0 +1,16 @@
+program: lr_search.py
+method: bayes
+project: multimodal_finetuning
+metric:
+  name: eval/loss
+  goal: minimize
+parameters:
+  lr:
+    min: 2.0e-5
+    max: 8.0e-4
+  image_enc_lr:
+    max: 2.0e-6
+    min: 5.0e-7
+early_terminate:
+  type: hyperband
+  min_iter: 300

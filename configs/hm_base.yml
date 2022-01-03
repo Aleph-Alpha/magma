@@ -1,0 +1,24 @@
+{
+    batch_size: 128,
+    train_steps: 2000,
+    name: 'train_hateful_memes_test',
+    data_dir: '/mnt/localdisk',
+    train_datasets: ['train_hm'],
+    eval_datasets: ['dev_hm'],
+    classifier_type: 'mlp',
+    mm_config_dir: multimodal_fewshot_model/configs/base.yml,
+    load_mm: '/mnt/shared_vol/checkpoints/multimodal_transformer_rn50x16/global_step12500/mp_rank_00_model_states.pt',
+    freeze_mm: False,
+    use_text: False,
+    lr: 1.0e-4,
+    min_lr:  1.0e-4,
+    log_every:  10,
+    eval_every: 50,
+    save_every: 2000,
+    gradient_accumulation_steps: 4,
+    eval_steps: 25,
+    zero_stage: 2,
+    warmup_num_steps: 0,
+    adaptive_gradient_clipping: 0.0
+
+}
