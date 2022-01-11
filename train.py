@@ -5,8 +5,6 @@ import wandb
 from torch.utils.data import random_split, ConcatDataset
 from torch.optim import AdamW
 from tqdm import tqdm
-from pathlib import Path
-from torchvision.utils import make_grid
 from multimodal_fewshot.datasets import (
     MultimodalDataset,
     collate_fn,
@@ -237,10 +235,7 @@ if __name__ == "__main__":
         n_params = count_parameters(model)
         print(f"Training model with {n_params:,} trainable parameters")
         config.num_trainable_parameters = n_params
-    transforms = get_transforms(
-        config.image_size,
-        model,
-    )
+    transforms = get_transforms(config.image_size, model,)
     trainable_parameters = configure_param_groups(model, config)
 
     # load data:
