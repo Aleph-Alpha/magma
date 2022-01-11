@@ -1,4 +1,3 @@
-import functools
 import torch
 import torch.nn as nn
 import re
@@ -9,11 +8,9 @@ from torchtyping import TensorType, patch_typeguard
 import transformers
 from transformers.file_utils import ModelOutput
 from einops import rearrange
-from torchvision.models import resnet101, resnet50
 import torch.nn.functional as F
 import timm
 import clip
-from collections import OrderedDict
 from functools import partial
 
 from multimodal_fewshot.utils import get_tokenizer, infer_checkpoint_path_from_config
@@ -26,7 +23,9 @@ from .adapters import (
     ParallelAdapterWrapper,
 )
 
-clip.model.LayerNorm = nn.LayerNorm  # we need to patch this to work with deepspeed :\
+clip.model.LayerNorm = (
+    nn.LayerNorm
+)  # we need to patch this for it to work with deepspeed
 patch_typeguard()  # needed for torchtyping typechecks to work
 
 
