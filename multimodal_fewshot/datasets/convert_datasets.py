@@ -4,7 +4,6 @@ import os
 import json
 from pathlib import Path
 from tqdm import tqdm
-from imagehash import phash
 import shutil
 
 
@@ -36,7 +35,8 @@ def convert_dataset(
 ):
     """
     Builds a dataset directory in our standard format. ds_iterator should return data of the form
-    image_path, {"captions": [...], "metadata": {...}, }, where image_path should be a Path object.
+    image_path, {"captions": [...], "metadata": {...}, }, where image_path should be a Path object, captions should map to a list of strings
+    and metadata can contain any custom data about the image. If a hash_fn is specified (such as phash), the image hash gets saved in metadata.
     """
 
     data_dir = Path(data_dir)

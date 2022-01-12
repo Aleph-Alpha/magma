@@ -17,13 +17,6 @@ import random
 import torchvision
 from multiprocessing import Pool, cpu_count
 
-try:
-    from vqa_eval import VQADataset, OKVQADataset, GQADataset
-    from coco import coco_dataset
-except ImportError:
-    from .vqa_eval import VQADataset, OKVQADataset, GQADataset
-    from .coco import coco_dataset
-
 from abc import ABC
 from abc import abstractmethod
 from PIL import Image
@@ -66,10 +59,7 @@ def _read_image_data(data_dir):
     image_data = []
     img_data_dir = data_dir / "image_data"
     paths = _load_paths(data_dir)
-    pbar = tqdm(
-        paths,
-        desc=f"loading dataset from {str(data_dir)}",
-    )
+    pbar = tqdm(paths, desc=f"loading dataset from {str(data_dir)}",)
     # read data with multiprocessing
     with Pool(cpu_count()) as pool:
         for img_data in pool.imap(load_json, pbar):
@@ -211,142 +201,6 @@ class ClassificationWrapper(ClassificationDatasetABC):
         metadata = self.dataset.data[index]["metadata"]
         class_label = torch.tensor(metadata["class_label"])
         return img, caption, class_label
-
-
-class CCDataset(Dataset):
-
-    """
-    Dataset of images and associated captions from a conceptual-captions-structured directory
-    """
-
-    def __init__(
-        self,
-        main_dir: str,
-        transform: Optional[Callable] = None,
-        size: int = None,
-        workers=8,
-    ):
-
-        self.main_dir = main_dir
-        self.transform = transform
-        self.imgs_cpts = []  # [(img_path, img_caption), ... ]
-
-        if main_dir.endswith("/"):
-            main_dir = main_dir[:-1]
-
-        dir_list = list(Path(main_dir).glob("*/*.json"))
-        pbar = tqdm(dir_list, "preparing CC dataset")
-        with Pool(workers) as p:
-            for i in p.imap(read_img_captions, pbar):
-                self.imgs_cpts += i
-        if size is not None:
-            self.imgs_cpts = self.imgs_cpts[:size]
-
-    def __len__(self):
-        return len(self.imgs_cpts)
-
-    def __getitem__(self, idx: int) -> Tuple[img, str]:
-        try:
-            img, caption = self.imgs_cpts[idx]
-            img = Image.open(f"{self.main_dir}/{img}").convert("RGB")
-            if not self.transform is None:
-                img = self.transform(img)
-            return img, caption
-        except (UnidentifiedImageError, OSError):
-            # return random index if image is corrupt
-            return self[random.randint(0, len(self))]
-
-
-class HMDataset(Dataset):
-
-    """
-    Dataset of images and associated captions from a hateful-memes-structured directory
-    """
-
-    def __init__(
-        self,
-        main_dir: str = "/data/hateful_memes",
-        split: str = "train",
-        size: int = None,
-    ):
-        # download_hm(main_dir)
-        self.main_dir = main_dir
-        self.imgs_txt_labels = []
-        with open(f"{self.main_dir}/{split}.jsonl") as file:
-            for line in tqdm(file):
-                info = json.loads(line)
-                self.imgs_txt_labels.append(
-                    (info.get("img"), info.get("text"), info.get("label"))
-                )
-                if size is not None:
-                    if len(self.imgs_txt_labels) >= size:
-                        break
-
-        print(f"loaded {len(self)} meme images with associated text and class label")
-
-    def __len__(self):
-        return len(self.imgs_txt_labels)
-
-    def __getitem__(self, idx):
-        try:
-            img, text, label = self.imgs_txt_labels[idx]
-            img = Image.open(f"{self.main_dir}/{img}").convert("RGB")
-            return img, text, label
-        except (UnidentifiedImageError, OSError):
-            # return random index if image is corrupt
-            return self[random.randint(0, len(self))]
-
-
-class MultimodalDataset(Dataset):
-    """
-    Wrapper for dataset that preprocesses images and captions into tensors that can be input
-    """
-
-    def __init__(self, img_cpts_dset, tokenizer, transforms=None, seq_len=2048):
-        self.ds = img_cpts_dset  # dataset yields (img, caption)
-        self.transforms = transforms
-        self.tokenizer = tokenizer
-        self.seq_len = seq_len
-
-    def __len__(self):
-        return len(self.ds)
-
-    def __getitem__(self, idx: int) -> Tuple[torch.Tensor, torch.Tensor]:
-        img, caption = self.ds[idx]
-        if isinstance(
-            caption, list
-        ):  # if we have multiple captions, pick one at random
-            caption = " ".join(caption)
-        if self.transforms is not None:
-            img = self.transforms(img)
-        return (
-            img,
-            self.tokenizer.encode(
-                caption,
-                return_tensors="pt",
-                max_length=self.seq_len,
-                padding="max_length",
-                truncation=True,
-            ),
-        )
-
-
-def get_dataset(name, data_dir=None, mode="train"):
-    assert mode in ["train", "val", "test", "testdev"]
-    if name == "coco":
-        return coco_dataset(data_dir, mode=mode)
-    elif name == "conceptual_captions":
-        return CCDataset(data_dir)
-    elif name == "hateful_memes":
-        return HMDataset(data_dir)
-    elif name == "vqa":
-        return VQADataset(data_dir, mode=mode)
-    elif name == "okvqa":
-        return OKVQADataset(data_dir, mode=mode)
-    elif name == "gqa":
-        return GQADataset(data_dir, mode=mode)
-    else:
-        raise ValueError(f"{name} not found")
 
 
 def collate_fn(batch_data: List[Tuple[torch.Tensor, torch.Tensor]]):
