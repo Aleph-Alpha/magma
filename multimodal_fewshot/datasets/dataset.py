@@ -203,17 +203,12 @@ class ClassificationWrapper(ClassificationDatasetABC):
         return img, caption, class_label
 
 
-def collate_fn(batch_data: List[Tuple[torch.Tensor, torch.Tensor]]):
-    """
-    # should be able to replace with this:
-    return tuple(
-        torch.cat(i) for i in list(zip(*batch_data))
-    )  # [(img1, cap1), (img2, cap2), ... ] -> [(img1, img2, ... ), (cap1, cap2, ... )])
-    """
+def collate_fn(batch_data: List[Tuple[torch.Tensor, torch.Tensor]], seq_len=2048):
+
     all_images, all_captions = list(
         zip(*batch_data)
     )  # [(img1, caption1), (img2, caption2), ... ] -> [(img1, img2, ... ), (caption1, caption2, ... )]
-    return torch.cat(all_images), torch.cat([i[:, :2048] for i in all_captions])
+    return torch.cat(all_images), torch.cat([i[:, :seq_len] for i in all_captions])
 
 
 def pil_to_b64(fp):

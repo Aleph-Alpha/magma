@@ -322,7 +322,7 @@ def init_distributed(backend="nccl"):
     return local_rank, rank, world_size
 
 
-def collate_fn_classification(batch_data):
+def collate_fn_classification(batch_data, seq_len=2048):
 
     # for nvlr2: list(zip*(batch_data)) = [l_images, r_images, captions, class_labels]
     image_list = list(zip(*batch_data))[:-2]
@@ -330,7 +330,7 @@ def collate_fn_classification(batch_data):
 
     # images, captions, class_labels = list(zip(*batch_data))
     images_list = [torch.cat(image) for image in image_list]
-    captions = torch.cat(captions)
+    captions = torch.cat([i[:, :seq_len] for i in captions])
     class_labels = torch.stack(class_labels)
     return images_list, captions, class_labels
 

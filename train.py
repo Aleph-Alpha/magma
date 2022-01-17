@@ -6,6 +6,7 @@ from torch.utils.data import random_split, ConcatDataset
 from torch.optim import AdamW
 from tqdm import tqdm
 from pathlib import Path
+from functools import partial
 from torchvision.utils import make_grid
 from multimodal_fewshot.datasets import (
     MultimodalDataset,
@@ -237,10 +238,7 @@ if __name__ == "__main__":
         n_params = count_parameters(model)
         print(f"Training model with {n_params:,} trainable parameters")
         config.num_trainable_parameters = n_params
-    transforms = get_transforms(
-        config.image_size,
-        model,
-    )
+    transforms = get_transforms(config.image_size, model,)
     trainable_parameters = configure_param_groups(model, config)
 
     # load data:
@@ -280,9 +278,9 @@ if __name__ == "__main__":
         optimizer=opt,
         model_parameters=trainable_parameters,
         training_data=train_dataset,
-        collate_fn=collate_fn
+        collate_fn=partial(collate_fn, seq_len=config.seq_len)
         if not config.is_classifier
-        else collate_fn_classification,
+        else partial(collate_fn_classification, seq_len=config.seq_len),
         config_params=config.deepspeed_config_params,
     )
     eval_loader = cycle(model_engine.deepspeed_io(eval_dataset))
