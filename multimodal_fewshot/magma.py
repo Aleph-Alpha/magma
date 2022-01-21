@@ -1,3 +1,5 @@
+import os
+from os.path import exists
 import torch
 import torch.nn as nn
 
@@ -10,17 +12,29 @@ from .model import (
     get_language_model
 )
 
+## for downloading checkpoint
+import gdown
+
 class Magma(nn.Module):
     def __init__(
-        self, 
-        model_dir, 
-        checkpoint_path, 
+        self,  
         config_path,
+        model_dir = './',
         tokenizer_name = 'gpt2', 
         lm_from_pretrained = False,
         device = 'cuda',
+        checkpoint_path = 'mp_rank_00_model_states.pt',
     ):
         super().__init__()
+
+        self.checkpoint_url = 'https://drive.google.com/u/0/uc?id=1EiAY3IcKWmGADaLDzdG25ykQghUwza6L&export=download'
+
+        self.checkpoint_path = checkpoint_path
+        checkpoint_exists = exists(self.checkpoint_path)
+
+        if checkpoint_exists == False:
+            print(f'model checkpoint does not exist in {self.checkpoint_path}\n')
+            self.download_checkpoint(save_as = self.checkpoint_path)
 
         self.tokenizer = get_tokenizer(tokenizer_name)
         self.config = MultimodalConfig.from_yml(config_path)
@@ -45,7 +59,14 @@ class Magma(nn.Module):
         
         self.model.device = self.device
 
-        self.model.half().eval()        
+        self.model.half().eval()  
+
+    def download_checkpoint(self, save_as):
+        '''
+        Replace with something else later on when we host the model checkpoint somewhere else
+        '''
+        gdown.download(url = self.checkpoint_url, output = save_as, quiet=False)
+              
 
     def preprocess_inputs(self, inputs): 
         """Converts a list of inputs into an embedding vector of shape (1, seq_len, hidden_dim)
