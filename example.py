@@ -12,5 +12,9 @@ inputs =[
     'Describe the painting: A'
 ]
 
-completion = magma.generate(inputs = inputs, num_tokens = 4, topk = 1) ## should return: "cabin on a lake"
-print(f'completion: {completion}')
+## forward pass
+embeddings = magma.preprocess_inputs(inputs = inputs)  ## returns a torch tensor of shape (1, sequence_length, hidden_dim)
+outputs = magma(embeddings) ## output logits shape: torch.Size([1, 150, 50400])
+
+## high level inference
+completion = magma.generate(inputs = inputs, num_tokens = 4, topk = 1) ## completion: "cabin on a lake"
