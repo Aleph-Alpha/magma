@@ -1,4 +1,4 @@
-from multimodal_fewshot.model import Magma
+from multimodal_fewshot import Magma
 from multimodal_fewshot.image import ImageInput
 
 magma = Magma(
