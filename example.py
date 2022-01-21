@@ -2,11 +2,9 @@ from multimodal_fewshot import Magma
 from multimodal_fewshot.image import ImageInput
 
 magma = Magma(
-    model_dir = '../multimodal_fewshot/model', 
-    checkpoint_path = '../multimodal_fewshot/mp_rank_00_model_states.pt', 
+    checkpoint_path = 'mp_rank_00_model_states.pt', 
     tokenizer_name = "gpt2", 
-    config_path = '../multimodal_fewshot/configs/base.yml',
-    lm_from_pretrained = False,
+    config_path = 'configs/MAGMA_v1.yml',
 )
 magma = magma.to('cuda:0') ## for some reason, this does not work on init
 
