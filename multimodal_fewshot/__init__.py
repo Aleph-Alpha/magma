@@ -23,3 +23,5 @@ from .datasets import (
     collate_fn,
     get_dataset, VQADataset, VQAFewShot, GQAFewShot, vqa_eval_step, gqa_eval_step
 )
+
+from .magma import Magma
