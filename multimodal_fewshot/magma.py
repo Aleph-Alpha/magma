@@ -22,7 +22,7 @@ class Magma(nn.Module):
         model_dir = './',
         tokenizer_name = 'gpt2', 
         lm_from_pretrained = False,
-        device = 'cuda',
+        device = 'cuda:0',
         checkpoint_path = 'mp_rank_00_model_states.pt',
     ):
         super().__init__()
