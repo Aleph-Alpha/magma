@@ -1,4 +1,3 @@
-import functools
 import torch
 import torch.nn as nn
 import re
@@ -9,11 +8,9 @@ from torchtyping import TensorType, patch_typeguard
 import transformers
 from transformers.file_utils import ModelOutput
 from einops import rearrange
-from torchvision.models import resnet101, resnet50
 import torch.nn.functional as F
 import timm
 import clip
-from collections import OrderedDict
 from functools import partial
 
 from multimodal_fewshot.utils import get_tokenizer, infer_checkpoint_path_from_config
@@ -22,14 +19,13 @@ from .language_model import get_language_model
 from .adapters import (
     Adapter,
     ParallelAdapter,
-    PrefixAdapter,
-    AttentionAdapter,
-    PrefixAdapterv2,
     AdapterWrapper,
     ParallelAdapterWrapper,
 )
 
-clip.model.LayerNorm = nn.LayerNorm  # we need to patch this to work with deepspeed :\
+clip.model.LayerNorm = (
+    nn.LayerNorm
+)  # we need to patch this for it to work with deepspeed
 patch_typeguard()  # needed for torchtyping typechecks to work
 
 
@@ -140,10 +136,7 @@ class ImagePrefix(nn.Module):
     }
 
     def __init__(
-        self,
-        config,
-        out_dim: int = 2048,
-        device=None,
+        self, config, out_dim: int = 2048, device=None,
     ):
         super().__init__()
         self.device = device or torch.device(
@@ -154,8 +147,7 @@ class ImagePrefix(nn.Module):
 
         # get (maybe pretrained) image encoder (clip / resnet etc.)
         self.enc = get_image_encoder(
-            config.encoder_name,
-            pretrained=config.pretrained_img_encoder,
+            config.encoder_name, pretrained=config.pretrained_img_encoder,
         )
         self.encoder_out_dim = self.IMAGE_ENCODER_OUT_DIMS[
             self.image_encoder_type
@@ -248,8 +240,7 @@ class MultimodalLM(nn.Module):
         )
 
         self.image_prefix = ImagePrefix(
-            config=config,
-            out_dim=self.lm.config.hidden_size,
+            config=config, out_dim=self.lm.config.hidden_size,
         )
 
         # might change based on the type of image encoder, so get from prefix instead of config
@@ -325,13 +316,12 @@ class MultimodalLM(nn.Module):
             "normal",
             "parallel",
             "scaled_parallel",
+        ], "adapter_type must be one of 'normal', 'parallel', or 'scaled_parallel'"
+        assert location in [
+            "mlp",
             "attention",
-            "prefix",
-            "prefix2",
-        ]
-        assert location in ["mlp", "attention"]
+        ], "location must be one of 'mlp' or 'attention'"
 
-        hidden_size = self.lm.config.hidden_size
         layers = getattr(self, transformer_attr)
         n_layers = len(layers)
 
@@ -343,72 +333,35 @@ class MultimodalLM(nn.Module):
                 if adapter_type in ["parallel", "scaled_parallel"]:
                     adapter_layer = ParallelAdapter(
                         module=mlp,
-                        dim=hidden_size,
+                        dim=self.lm.config.hidden_size,
                         downsample_factor=downsample_factor,
                         scaled=adapter_type == "scaled_parallel",
                         **adapter_kwargs,
                     )
                 else:
-                    if adapter_type == "attention":
-                        adpt = AttentionAdapter(
-                            dim=hidden_size,
-                            downsample_factor=downsample_factor,
-                            **adapter_kwargs,
-                        )
-                    elif adapter_type == "normal":
-                        adpt = Adapter(
-                            dim=hidden_size,
-                            downsample_factor=downsample_factor,
-                            **adapter_kwargs,
-                        )
-                    else:
-                        raise NotImplementedError(
-                            f"Adapter type {adapter_type} not implemented for {location}"
-                        )
-                    adapter_layer = nn.Sequential(
-                        *[
-                            mlp,
-                            adpt,
-                        ]
+                    adpt = Adapter(
+                        dim=self.lm.config.hidden_size,
+                        downsample_factor=downsample_factor,
+                        **adapter_kwargs,
                     )
+                    adapter_layer = nn.Sequential(*[mlp, adpt,])
                 setattr(layers[l], ff_attr, adapter_layer)
             else:
                 if self.attn_adapter_added:
                     raise ValueError("Adapter layer already added")
                 attn = getattr(layers[l], attn_attr)
-                assert adapter_type in [
-                    "prefix",
-                    "prefix2",
-                    "scaled_parallel",
-                    "normal",
-                ], "only prefix adapter supported in attn layer"
-                if adapter_type == "prefix":
-                    adapter_layer = PrefixAdapter(
-                        dim=hidden_size,
-                        attention_module=attn,
-                        q_proj=attn.attention.q_proj,
-                        **adapter_kwargs,
-                    )
-                elif adapter_type == "prefix2":
-                    num_heads = attn.attention.num_heads
-                    adapter_layer = PrefixAdapterv2(
-                        dim=hidden_size,
-                        num_heads=num_heads,
-                        attn_block=attn,
-                        **adapter_kwargs,
-                    )
-                elif adapter_type == "scaled_parallel":
+                if adapter_type in ["parallel", "scaled_parallel"]:
                     adapter_layer = ParallelAdapterWrapper(
                         module=attn,
-                        dim=hidden_size,
+                        dim=self.lm.config.hidden_size,
                         downsample_factor=downsample_factor,
-                        scaled=True,
+                        scaled="scaled" in adapter_type,
                         **adapter_kwargs,
                     )
                 else:
                     adapter_layer = AdapterWrapper(
                         attn_block=attn,
-                        dim=hidden_size,
+                        dim=self.lm.config.hidden_size,
                         downsample_factor=downsample_factor,
                         **adapter_kwargs,
                     )
@@ -650,11 +603,7 @@ class ClassificationHead(nn.Module):
 
 class MultimodalClassifier(MultimodalLM):
     def __init__(
-        self,
-        lm: nn.Module,
-        tokenizer,
-        config,
-        device=None,
+        self, lm: nn.Module, tokenizer, config, device=None,
     ):
         super().__init__(lm, tokenizer, config, device)
 
