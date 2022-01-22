@@ -251,7 +251,7 @@ class MultimodalLM(nn.Module):
             # adapter config should be a dict like so:
             # {
             #     "mlp": {"adapter_type": "parallel", "downsample_factor": 4, "add_layernorm": True, **kwargs},
-            #     "attn": {"adapter_type": "prefix", "l": 20, **kwargs},
+            #     "attn": {"adapter_type": "normal", "l": 20, **kwargs},
             # }
             mlp_config = deepcopy(config.adapter_config.get("mlp", None))
             if mlp_config:
@@ -303,9 +303,7 @@ class MultimodalLM(nn.Module):
         transformer_attr: str = "transformer",
         ff_attr: str = "mlp",
         attn_attr: str = "attn",
-        adapter_type: Literal[
-            "normal", "parallel", "scaled_parallel", "attention", "prefix", "prefix2"
-        ] = "normal",
+        adapter_type: Literal["normal", "parallel", "scaled_parallel"] = "normal",
         location: Literal["mlp", "attention"] = "mlp",
         **adapter_kwargs,
     ):
@@ -516,17 +514,11 @@ class MultimodalLM(nn.Module):
         if inference:
             return self.generate(input_embeddings)
         else:
-            # if prefix tuning, truncate captions
             assert (
                 captions.shape[1] == self.seq_len
             ), f"in training, captions should be padded to sequence length ({self.seq_len}), but are length {captions.shape[1]}"
 
             attn_adapter_config = self.config.adapter_config.get("attention", {})
-
-            if attn_adapter_config.get("adapter_type") == "prefix2":
-                # if we're doing prefix tuning, we need to truncate the inputs by the length of the prefix
-                l = attn_adapter_config.get("l", 20)
-                captions = captions[:, :-l]
 
             labels = self.build_labels(
                 input_embeddings, captions
