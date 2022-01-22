@@ -51,7 +51,7 @@ def cycle(loader):
             yield data
 
 
-def get_tokenizer(name="gpt2"):
+def get_tokenizer(name="gpt2", sequence_length=2048):
     """
     Gets tokenizer for LM
     """
@@ -59,7 +59,7 @@ def get_tokenizer(name="gpt2"):
         tokenizer = GPT2TokenizerFast.from_pretrained("gpt2")
         tokenizer.pad_token_id = tokenizer.eos_token
         tokenizer.padding_side = "right"
-        tokenizer.model_max_length = 2048
+        tokenizer.model_max_length = sequence_length
     else:
         raise ValueError(f"Tokenizer {name} not recognized")
     return tokenizer
