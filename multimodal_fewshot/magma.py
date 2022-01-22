@@ -1,18 +1,14 @@
 from path import Path
 import torch
 import torch.nn as nn
-import re
 from copy import deepcopy
-
-from typing import Literal, Optional, List, Callable, Union
+from typing import Literal, Optional, List,
 from torchtyping import TensorType
-import transformers
 from transformers.file_utils import ModelOutput
 import torch.nn.functional as F
 from multimodal_fewshot.config import MultimodalConfig
 
-from multimodal_fewshot.utils import get_tokenizer, infer_checkpoint_path_from_config
-from .sampling import top_k_filter, top_p_filter
+from multimodal_fewshot.utils import get_tokenizer
 from .language_model import get_language_model
 from .adapters import (
     Adapter,
@@ -22,9 +18,8 @@ from .adapters import (
 )
 from .image_prefix import ImagePrefix
 from .sampling import generate
-from .utils import build_labels
+from .utils import build_labels, is_url
 from .transforms import get_transforms
-
 # ------------------------- Magma main class ----------------------------------
 
 
@@ -252,37 +247,15 @@ class Magma(nn.Module):
 
         return lm_outputs
 
+    @classmethod
+    def from_checkpoint(cls, config_path, checkpoint_path, model_dir="./"):
+        """
+        Loads a model checkpoint from disk / url
+        """
+        model = cls(config_path, model_dir=model_dir)
+        if is_url(checkpoint_path):
+            raise NotImplementedError("Loading from url not implemented")
+        sd = torch.load(checkpoint_path, map_location=torch.device("cpu"))
+        model.load_state_dict(sd)
+        return model
 
-def get_multimodal_model(
-    config_path,
-    model_dir="models",
-    ckpt_path=None,
-    tokenizer_name="gpt2",
-    lm_from_pretrained=False,
-):
-    from .config import MultimodalConfig
-    from .utils import get_tokenizer
-    from .transforms import get_transforms
-
-    tokenizer = get_tokenizer(tokenizer_name)
-    config = MultimodalConfig.from_yml(config_path)
-
-    model = Magma(
-        lm=get_language_model(
-            config.lm_name,
-            model_dir=model_dir,
-            from_pretrained=lm_from_pretrained,
-            no_init=True,
-        ),
-        tokenizer=tokenizer,
-        config=config,
-    )
-
-    transforms = get_transforms(config.image_size, model=model)
-    if ckpt_path is not None:
-        sd = torch.load(ckpt_path, map_location=torch.device("cpu"))
-        print("loading multimodal transformer checkpoint...")
-        model.load_state_dict(sd["module"])
-        print(f"loaded multimodal transformer from checkpoint {ckpt_path}")
-
-    return model, transforms, tokenizer

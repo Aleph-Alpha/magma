@@ -1,7 +1,7 @@
 import torch
 import torch.nn as nn
-from typing import Literal, Optional, List, Callable, Union
-from torchtyping import TensorType, patch_typeguard
+from typing import Callable, Union
+from torchtyping import patch_typeguard
 from einops import rearrange
 import timm
 import clip

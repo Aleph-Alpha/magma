@@ -1,9 +1,6 @@
 import torch
 import torch.nn as nn
-from typing import Literal, Optional, List, Callable, Union
 from torchtyping import TensorType
-import torch.nn.functional as F
-from einops import rearrange
 
 
 class Adapter(nn.Module):

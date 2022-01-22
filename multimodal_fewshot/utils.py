@@ -363,3 +363,8 @@ def build_labels(
                 break
 
     return labels
+
+
+def is_url(string):
+    return string.startswith("http://") or string.startswith("https://")
+

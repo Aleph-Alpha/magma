@@ -62,13 +62,13 @@ print(caption(prompt))
 The following code loads the model from a checkpoint, and runs a QA prompt using an image loaded from disk:
 
 ```python
-from multimodal_fewshot.model import get_multimodal_model
+from magma import Magma
 from PIL import Image 
 
 config_path = "configs/base.yml"
 ckpt_path = "mp_rank_00_model_states.pt"
 
-model, transforms, tokenizer = get_multimodal_model(config_path, ckpt_path=ckpt_path)
+model = Magma.from_checkpoint(config_path, ckpt_path)
 
 # load image
 img = Image.open('test.jpg')

@@ -1,5 +1,5 @@
 from .config import MultimodalConfig
-from .magma import Magma, get_multimodal_model
+from .magma import Magma
 from .language_model import get_language_model
 from .transforms import get_transforms
 from .utils import (

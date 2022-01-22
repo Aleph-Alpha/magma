@@ -1,6 +1,5 @@
 import torch
 import torch.nn as nn
-from typing import Literal, Optional, List, Callable, Union
 import torch.nn.functional as F
 from multimodal_fewshot.utils import get_tokenizer, infer_checkpoint_path_from_config
 from .language_model import get_language_model
@@ -23,11 +22,7 @@ class ClassificationHead(nn.Module):
 
 class MultimodalClassifier(MultimodalLM):
     def __init__(
-        self,
-        lm: nn.Module,
-        tokenizer,
-        config,
-        device=None,
+        self, lm: nn.Module, tokenizer, config, device=None,
     ):
         super().__init__(lm, tokenizer, config, device)
 
