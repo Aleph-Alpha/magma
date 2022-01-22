@@ -65,10 +65,13 @@ class RandCropResize(object):
         return T.RandomCrop(size=self.target_size)(img)
 
 
-def get_transforms(image_size, model, use_extra_transforms=False):
-    model_name = model.config.encoder_name
-    if "clip" in model_name:
-        return clip_preprocess(model.image_prefix.enc.input_resolution)
+def get_transforms(
+    image_size, encoder_name, input_resolution=None, use_extra_transforms=False
+):
+    if "clip" in encoder_name:
+        assert input_resolution is not None
+        return clip_preprocess(input_resolution)
+
     base_transforms = [
         T.Lambda(lambda img: img.convert("RGB") if img.mode != "RGB" else img),
         RandCropResize(image_size),

@@ -12,19 +12,9 @@ from .utils import (
     wandb_init,
     save_model,
     load_model,
-    get_optimizer,
     print_main,
     configure_param_groups,
     log_table,
 )
 from .train_loop import eval_step, inference_step, train_step
-from .datasets import (
-    MultimodalDataset,
-    collate_fn,
-    get_dataset,
-    VQADataset,
-    VQAFewShot,
-    GQAFewShot,
-    vqa_eval_step,
-    gqa_eval_step,
-)
+from .datasets import collate_fn

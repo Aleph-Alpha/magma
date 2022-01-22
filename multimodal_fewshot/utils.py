@@ -239,15 +239,6 @@ def configure_param_groups(model, config):
     return all_params
 
 
-def get_optimizer(param_groups, name, lr, betas=(0.9, 0.95)):
-    if name.lower() == "adamw":
-        return AdamW(param_groups, lr, betas=betas)
-    elif name.lower() == "adadelta":
-        return Adadelta(param_groups, lr)
-    else:
-        raise ValueError(f"Unknown optimizer {name}")
-
-
 def count_parameters(model):
     """
     Counts the number of trainable parameters in a model

@@ -23,6 +23,7 @@ from .adapters import (
 from .image_prefix import ImagePrefix
 from .sampling import generate
 from .utils import build_labels
+from .transforms import get_transforms
 
 # ------------------------- Magma main class ----------------------------------
 
@@ -35,9 +36,10 @@ class Magma(nn.Module):
             config = MultimodalConfig.from_yml(
                 config
             )  # load config from yml file if config is a string
+        else:
+            assert isinstance(config, MultimodalConfig)
 
         self.config = config
-
         self.lm = get_language_model(
             config.lm_name, model_dir=model_dir, from_pretrained=lm_from_pretrained
         )
@@ -69,6 +71,12 @@ class Magma(nn.Module):
 
         # might change based on the type of image encoder, so get from prefix instead of config
         self.image_prefix_seq_len = self.image_prefix.out_seq_len
+
+        self.transforms = get_transforms(
+            config.image_size,
+            config.encoder_name,
+            input_resolution=self.image_prefix.enc.input_resolution,
+        )
 
         # add adapters
         if config.adapter_config:
@@ -103,9 +111,7 @@ class Magma(nn.Module):
     def add_adapters(
         self,
         downsample_factor: int = 4,
-        adapter_type: Literal[
-            "normal", "parallel", "scaled_parallel", "attention", "prefix", "prefix2"
-        ] = "normal",
+        adapter_type: Literal["normal", "parallel", "scaled_parallel"] = "normal",
         location: Literal["mlp", "attention"] = "mlp",
         ff_attr: str = "mlp",
         attn_attr: str = "attn",

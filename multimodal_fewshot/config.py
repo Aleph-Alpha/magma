@@ -54,8 +54,7 @@ class MultimodalConfig:
     eval_dataset_name: str = "/data/conceptual_captions"
     train_dataset_dir: str = "/data/coco_data"
     eval_dataset_dir: str = "/data/coco_data"
-    vqa_dir: str = "/data/vqa"
-    gqa_dir: str = "/data/gqa"
+    eval_dataset_pct: float = 0.1
 
     # Model architecture:
     # ------------------------------------------------------------
