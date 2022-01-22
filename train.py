@@ -28,7 +28,7 @@ from multimodal_fewshot.datasets.nlvr2 import NLVR2Dataset
 from multimodal_fewshot.datasets.vizwiz import VizWizDataset, VizWizFewShot
 from multimodal_fewshot.datasets.dataset import ClassificationWrapper
 from multimodal_fewshot.transforms import get_transforms
-from multimodal_fewshot.model import (
+from multimodal_fewshot.magma import (
     Magma,
     MultimodalClassifier,
     get_language_model,

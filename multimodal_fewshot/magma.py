@@ -1,3 +1,4 @@
+from path import Path
 import torch
 import torch.nn as nn
 import re
@@ -8,6 +9,7 @@ from torchtyping import TensorType
 import transformers
 from transformers.file_utils import ModelOutput
 import torch.nn.functional as F
+from multimodal_fewshot.config import MultimodalConfig
 
 from multimodal_fewshot.utils import get_tokenizer, infer_checkpoint_path_from_config
 from .sampling import top_k_filter, top_p_filter
@@ -23,18 +25,25 @@ from .sampling import generate
 from .utils import build_labels
 
 # ------------------------- Magma main class ----------------------------------
+
+
 class Magma(nn.Module):
-    def __init__(
-        self,
-        lm: nn.Module,
-        tokenizer: transformers.PreTrainedTokenizer,
-        config,
-        device=None,
-    ):
+    def __init__(self, config, device=None, model_dir="./", lm_from_pretrained=False):
         super().__init__()
-        self.lm = lm
-        self.tokenizer = tokenizer
+
+        if isinstance(config, (str, Path)):
+            config = MultimodalConfig.from_yml(
+                config
+            )  # load config from yml file if config is a string
+
         self.config = config
+
+        self.lm = get_language_model(
+            config.lm_name, model_dir=model_dir, from_pretrained=lm_from_pretrained
+        )
+        self.seq_len = self.lm.config.max_position_embeddings
+
+        self.tokenizer = get_tokenizer("gpt2", sequence_length=self.seq_len)
 
         # setup lm settings
         self.tokenizer.add_special_tokens(
@@ -43,13 +52,12 @@ class Magma(nn.Module):
         self.image_token = self.tokenizer.cls_token_id
         self.eos_token = self.tokenizer.eos_token_id
         self.lm.resize_token_embeddings(len(self.tokenizer))
-        self.lm.config.pad_token_id = tokenizer.eos_token_id
+        self.lm.config.pad_token_id = self.tokenizer.eos_token_id
         self.word_embedding = self.lm.transformer.wte
         self.transformer = self.lm.transformer.h
 
         # adapter settings
         self.mlp_adapter_added, self.attn_adapter_added = False, False
-        self.seq_len = self.lm.config.max_position_embeddings
 
         self.device = device or torch.device(
             "cuda" if torch.cuda.is_available() else "cpu"
