@@ -4,6 +4,7 @@ from pprint import pprint
 from .utils import is_main
 import os
 from pathlib import Path
+import uuid
 
 
 def load_config(path, config_dir=Path("configs")):
@@ -96,13 +97,13 @@ class MultimodalConfig:
             pprint(self.__dict__, indent=4)
             print("-" * 100)
 
-    def is_default(self, arg: str):
-        return getattr(self, arg) == self.__dataclass_fields__.get(arg).default
-
     def __post_init__(self):
         self.is_classifier = self.class_dict is not None
         if self.adapter_config is None:
             self.adapter_config = {}
+
+        # Deepspeed Settings:
+        # ------------------------------------------------------------
         if self.lr_decay_iters is None:
             self.lr_scheduler = "WarmupLR"
             self.scheduler_dict = {
@@ -135,35 +136,9 @@ class MultimodalConfig:
                 "load_from_fp32_weights": False,
             },
         }
+
         if self.name is None:
-            # derive automatic name for wandb logging
-            enc_str = f"encoder-{self.encoder_name}"
-            if self.pretrained_img_encoder:
-                enc_str += "-pretrained"
-            name_params = [enc_str, f"lr-{self.lr:.2e}", f"bs-{self.batch_size}"]
-            non_defaults = []
-            if not self.is_default("freeze_lm"):
-                non_defaults.append("tune-lm")
-            if not self.is_default("freeze_img_encoder"):
-                non_defaults.append("tune-img-encoder")
-            if not self.is_default("adapter_config"):
-                non_defaults.append(str(self.adapter_config))
-            if not self.is_default("image_enc_lr"):
-                non_defaults.append(f"img-enc-lr-{self.image_enc_lr}")
-            if self.lr_decay_iters is not None:
-                non_defaults.append(f"lr-decay-{self.lr_decay_iters}-steps")
-            if not self.is_default("image_embed_dropout_prob"):
-                non_defaults.append(
-                    f"img-embed-dropout-{self.image_embed_dropout_prob}"
-                )
-            if not self.is_default("use_image_embed_layernorm"):
-                non_defaults.append(f"img-embed-ln")
-            if not self.is_default("freeze_layernorms"):
-                non_defaults.append("tune_layernorms")
-            if not self.is_default("image_seq_len"):
-                non_defaults.append(f"image-seq-{self.image_seq_len}")
-            name_params += non_defaults
-            self.name = "_".join(name_params)
+            self.name = str(uuid.uuid4())[:8]
 
     @classmethod
     def from_yml(cls, path):
