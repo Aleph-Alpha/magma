@@ -60,7 +60,7 @@ class MultimodalConfig:
     # ------------------------------------------------------------
     encoder_name: str = "clip"
     tokenizer_name: str = "gpt2"
-    lm_name: str = "gptj"
+    lm_name: str = "EleutherAI/gpt-j-6B"
     image_seq_len: int = 2
     pretrained_img_encoder: bool = False
     seq_len: int = None
