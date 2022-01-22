@@ -29,7 +29,7 @@ from multimodal_fewshot.datasets.vizwiz import VizWizDataset, VizWizFewShot
 from multimodal_fewshot.datasets.dataset import ClassificationWrapper
 from multimodal_fewshot.transforms import get_transforms
 from multimodal_fewshot.model import (
-    MultimodalLM,
+    Magma,
     MultimodalClassifier,
     get_language_model,
 )
@@ -226,7 +226,7 @@ if __name__ == "__main__":
             config
         )  # we might not always want to do this if e.g we're continuing a classification training? Although I guess those weights get loaded later?
     else:
-        model = MultimodalLM(
+        model = Magma(
             lm=get_language_model(config.lm_name, model_dir="/mnt/localdisk/models/"),
             tokenizer=tokenizer,
             config=config,

@@ -31,7 +31,11 @@ def save_images(img_list, target_dir, mode="mv"):
 
 
 def convert_dataset(
-    data_dir, dir_size=10000, hash_fn=None, mode="mv", ds_iterator=None,
+    data_dir,
+    dir_size=10000,
+    hash_fn=None,
+    mode="mv",
+    ds_iterator=None,
 ):
     """
     Builds a dataset directory in our standard format. ds_iterator should return data of the form
@@ -55,7 +59,8 @@ def convert_dataset(
     new_img_locations = {}
 
     pbar = tqdm(
-        enumerate(ds_iterator), desc="converting dataset to standard format...",
+        enumerate(ds_iterator),
+        desc="converting dataset to standard format...",
     )
 
     for k, (img_path, data) in pbar:
@@ -111,4 +116,3 @@ def convert_dataset(
             # empty path and data lists and update save directories for next saving step
             img_data_list = []
             save_data_dir = data_dir / "image_data" / f"{int((k+1)/dir_size)}/"
-

@@ -59,7 +59,10 @@ def _read_image_data(data_dir):
     image_data = []
     img_data_dir = data_dir / "image_data"
     paths = _load_paths(data_dir)
-    pbar = tqdm(paths, desc=f"loading dataset from {str(data_dir)}",)
+    pbar = tqdm(
+        paths,
+        desc=f"loading dataset from {str(data_dir)}",
+    )
     # read data with multiprocessing
     with Pool(cpu_count()) as pool:
         for img_data in pool.imap(load_json, pbar):

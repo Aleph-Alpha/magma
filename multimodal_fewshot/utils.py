@@ -9,18 +9,12 @@ import yaml
 import torch
 from torch.optim import AdamW, Adadelta
 from collections import defaultdict
+from torchtyping import TensorType
 
 try:
     from collections.abc import MutableMapping
 except ImportError:
     from collections import MutableMapping
-
-CLIP_MODEL_MAP = {
-    "clip": "ViT-B/32",
-    "clip_no_pooling": "ViT-B/32",
-    "clip_resnet": "RN50x4",
-    "clip_resnet_large": "RN50x16",
-}
 
 
 def is_main():
@@ -81,45 +75,6 @@ def parse_args():
     args = parser.parse_args()
     args.deepspeed = True
     return args
-
-
-class Checkpoint(MutableMapping):
-
-    """
-    Checkpoint loading for gptj
-
-    """
-
-    def __init__(self, chkpt_dir, device="cpu"):
-        self.device = device
-        self.chkpt_dir = Path(chkpt_dir)
-        self.checkpoint = torch.load(str(chkpt_dir / Path("m.pt")))
-
-    def __len__(self):
-        return len(self.checkpoint)
-
-    def __getitem__(self, key):
-        path = self.chkpt_dir / Path(self.checkpoint[key]).name
-        return torch.load(str(path), map_location=self.device)
-
-    def __setitem__(self, key, value):
-        return
-
-    def __delitem__(self, key, value):
-        return
-
-    def keys(self):
-        return self.checkpoint.keys()
-
-    def __iter__(self):
-        for key in self.checkpoint:
-            yield (key, self.__getitem__(key))
-
-    def __copy__(self):
-        return Checkpoint(self.chkpt_dir, device=self.device)
-
-    def copy(self):
-        return Checkpoint(self.chkpt_dir, device=self.device)
 
 
 def wandb_log(*args, **kwargs):
@@ -289,6 +244,8 @@ def get_optimizer(param_groups, name, lr, betas=(0.9, 0.95)):
         return AdamW(param_groups, lr, betas=betas)
     elif name.lower() == "adadelta":
         return Adadelta(param_groups, lr)
+    else:
+        raise ValueError(f"Unknown optimizer {name}")
 
 
 def count_parameters(model):
@@ -382,3 +339,36 @@ def to_cuda_half(*args):
         return cuda_half_args[0]
     else:
         return cuda_half_args
+
+
+def build_labels(
+    input_embeddings: TensorType["b", "s", "d"],
+    captions: TensorType["b", "s"],
+    eos_token,
+    device,
+) -> TensorType["b", "s"]:
+    """
+    Builds labels from input embeddings.
+
+    Masks out the labels with -100 in positions up to the seq length of the embeddings, so loss is only computed for captions, 
+    and not for image tokens.
+    Additionally, masks out everything *after* the first eos token.
+    """
+    shape = input_embeddings.shape[:2]  # b, s
+
+    assert captions.shape[1] >= shape[1]
+
+    # make sure to add masked embedding tokens in the appropriate locations in the labels
+    embedding_tokens = torch.zeros(shape, dtype=torch.int64).to(device) - 100
+    labels = torch.cat(
+        (embedding_tokens, captions[:, : -shape[1]]), dim=1
+    )  # we truncate the sequence length of the captions, as they are always padded to the full sequence length
+
+    # mask out repeating eos tokens
+    for label in labels:
+        for k, token in enumerate(label):
+            if token == eos_token:
+                label[k + 1 :] = -100
+                break
+
+    return labels

@@ -13,7 +13,6 @@
     image_enc_lr: 2.0e-6,
     use_image_embed_layernorm: true,
     image_embed_dropout_prob: 0.1, 
-    freeze_img_encoder_batchnorms: false,
     image_size: 384,
     
     gradient_accumulation_steps: 4,

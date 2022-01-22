@@ -70,12 +70,9 @@ class MultimodalConfig:
     # ------------------------------------------------------------
     freeze_lm: bool = True
     freeze_img_encoder: bool = True
-    freeze_layernorms: bool = True
+
     image_embed_dropout_prob: float = 0.0
     use_image_embed_layernorm: bool = False
-    tune_lm_biases: bool = False
-    tune_img_encoder_biases: bool = False
-    freeze_img_encoder_batchnorms: bool = True
 
     # Adapter settings:
     # ------------------------------------------------------------

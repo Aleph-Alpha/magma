@@ -1,5 +1,5 @@
 from .config import MultimodalConfig
-from .model import MultimodalLM, get_multimodal_model
+from .model import Magma, get_multimodal_model
 from .language_model import get_language_model
 from .transforms import get_transforms
 from .utils import (
@@ -15,11 +15,16 @@ from .utils import (
     get_optimizer,
     print_main,
     configure_param_groups,
-    log_table
+    log_table,
 )
 from .train_loop import eval_step, inference_step, train_step
 from .datasets import (
     MultimodalDataset,
     collate_fn,
-    get_dataset, VQADataset, VQAFewShot, GQAFewShot, vqa_eval_step, gqa_eval_step
+    get_dataset,
+    VQADataset,
+    VQAFewShot,
+    GQAFewShot,
+    vqa_eval_step,
+    gqa_eval_step,
 )
