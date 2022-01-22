@@ -19,7 +19,5 @@ from .utils import (
 )
 from .train_loop import eval_step, inference_step, train_step
 from .datasets import (
-    MultimodalDataset,
     collate_fn,
-    get_dataset, VQADataset, VQAFewShot, GQAFewShot, vqa_eval_step, gqa_eval_step
 )
