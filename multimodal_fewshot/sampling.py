@@ -16,7 +16,10 @@ def top_p(logits, thres=0.9):
 
 # topk
 def top_k(logits, thres=0.9):
-    k = int((1 - thres) * logits.shape[-1])
+    if thres != 1.:
+        k = int((1 - thres) * logits.shape[-1])
+    else:
+        k = 1
     val, ind = torch.topk(logits, k)
     probs = torch.full_like(logits, float("-inf"))
     probs.scatter_(1, ind, val)
