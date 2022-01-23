@@ -2,10 +2,12 @@ import os
 from os.path import exists
 import torch
 import torch.nn as nn
+import torch.nn.functional as F
 
 from .config import MultimodalConfig
 from .utils import get_tokenizer
 from .transforms import get_transforms
+from .sampling import top_k, top_p
 
 from .model import (
     MultimodalLM, 
@@ -59,7 +61,7 @@ class Magma(nn.Module):
         
         self.model.device = self.device
 
-        self.model.half().eval()  
+        self.model.half().eval()
 
     def download_checkpoint(self, save_as):
         '''
@@ -91,22 +93,6 @@ class Magma(nn.Module):
 
         return self.model.embed(list_of_tensors)
 
-    def _top_k_filter(self, logits, topk=0, filter_value=-float('Inf'), device = 'cpu'):
-        """ Filter a distribution of logits using top-k  filtering
-        https://gist.github.com/thomwolf/1a5a29f6962089e871b94cbd09daf317
-
-        Args:
-            logits: logits distribution shape (..., vocabulary size)
-            top_k >0: keep only top k tokens with highest probability (top-k filtering).
-        """
-        top_k = min(topk, logits.size(-1))  # Safety check
-        if top_k > 0:
-            # Remove all tokens with a probability less than the last token of the top-k
-            indices_to_remove = logits < torch.topk(logits, topk)[0][..., -1, None]
-            logits[indices_to_remove] = filter_value
-
-        return logits
-
     def forward(
         self, 
         x, 
@@ -131,58 +117,25 @@ class Magma(nn.Module):
 
         return output
 
-    def run(self, inputs: list, temperature: float = 0, topk: int = 0):
-
-        with torch.no_grad():
-            output = self.forward(x = inputs)
-            
-        logits = output.logits
-
-        '''
-        divide by temperature only when temp > 0
-        '''
-        if temperature > 0:
-            logits_for_next_token = logits[:, -1, :] / temperature
-        else:
-            logits_for_next_token = logits[:, -1, :]
-
-        '''
-        topk filtering converts every other token except the top k tokens to -inf
-        '''
-        logits_for_next_token = self._top_k_filter(logits_for_next_token, topk=topk, device = self.device)
-
-        '''
-        run softmax to convert logits to a probability distribution
-        '''
-        probs = torch.softmax(logits_for_next_token, dim=-1)
-
-        '''
-        do multinomial sampling only when either temp > 0 or topk > 0
-        '''
-        if temperature > 0 or topk > 0:
-            next_token_idx = torch.multinomial(probs, num_samples=1).view(-1).tolist()
-        else:
-            # torch.argmax(probs, dim = -1) looks like -> tensor([15], device='some_device')
-            next_token_idx = torch.argmax(probs, dim = -1).view(-1).tolist() 
-
-        next_token_str = self.tokenizer.decode(next_token_idx)
-
-        return next_token_str
-
-    def generate(self, inputs: list, num_tokens: int, temperature: float = 0, topk: int = 0, return_list_of_tokens = False):
+    @torch.no_grad()
+    def generate(
+        self, 
+        inputs: list, 
+        num_tokens: int, 
+        temperature: float = 1., 
+        filter_logits_fn = top_k,
+        filter_threshold = 1.
+    ):
         
-        completion = []
-        inputs = inputs.copy()
-        for i in range(num_tokens):
-            next_token_str = self.run(
-                inputs = inputs, 
-                temperature = temperature, 
-                topk = topk
-            )
-            inputs.append(next_token_str)
-            completion.append(next_token_str)
+        embeddings =  self.preprocess_inputs(inputs = inputs)
 
-        if return_list_of_tokens == False:
-            return ''.join(map(str, completion))
-        else:
-            return completion
+        output = self.model.generate(
+            embeddings = embeddings,
+            temperature=temperature,
+            filter_threshold = filter_threshold,
+            filter_logits_fn = filter_logits_fn,
+            remove_tokens_after_eos= False,
+
+        )[0]
+
+        return output
