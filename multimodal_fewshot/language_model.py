@@ -47,7 +47,7 @@ def _load_hf_model(config, name, from_pretrained=False, cache_dir=None):
 
     if from_pretrained:
         print_main("loading language model from pretrained weights...")
-        return model_class.from_pretrained(config, cache_dir=cache_dir)
+        return model_class.from_pretrained(name, config=config, cache_dir=cache_dir)
     else:
         print_main("initializing language model without pretrained weights...")
         return model_class(config)
@@ -76,24 +76,6 @@ def get_language_model(
 
     ctx = no_init_weights if no_init else contextlib.nullcontext
     with ctx():
-        # if "gpt2" in name:
-        #     model = GPT2LMHeadModel.from_pretrained(
-        #         None if not from_pretrained else name,
-        #         config=config,
-        #         cache_dir=model_dir,
-        #     )
-        # elif "gpt-j" in name:
-        #     model = GPTJForCausalLM.from_pretrained(
-        #         name,
-        #         config=config,
-        #         cache_dir=model_dir,
-        #     )
-        # else:
-        #     model = GPTNeoForCausalLM.from_pretrained(
-        #         None if not from_pretrained else name,
-        #         config=config,
-        #         cache_dir=model_dir,
-        #     )
         model = _load_hf_model(
             config, name, from_pretrained=from_pretrained, cache_dir=model_dir
         )

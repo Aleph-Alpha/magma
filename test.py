@@ -8,6 +8,7 @@ if __name__ == "__main__":
         "configs/MAGMA_v1.yml",
         "/mnt/localdisk/mp_rank_00_model_states.pt",
         model_dir="/mnt/localdisk/gptj",
+        lm_from_pretrained=True,
     )
     model.half().cuda().eval()
     tokenizer = get_tokenizer()

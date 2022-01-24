@@ -255,12 +255,16 @@ class Magma(nn.Module):
         return lm_outputs
 
     @classmethod
-    def from_checkpoint(cls, config_path, checkpoint_path, model_dir="./"):
+    def from_checkpoint(
+        cls, config_path, checkpoint_path, model_dir="./", lm_from_pretrained=False
+    ):
         """
         Loads a model checkpoint from disk / url
         """
         print_main(f"loading magma model from checkpoint {checkpoint_path}...")
-        model = cls(config_path, model_dir=model_dir)
+        model = cls(
+            config_path, model_dir=model_dir, lm_from_pretrained=lm_from_pretrained
+        )
         if is_url(checkpoint_path):
             raise NotImplementedError("Loading from url not implemented")
         sd = torch.load(checkpoint_path, map_location=torch.device("cpu"))
