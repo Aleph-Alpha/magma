@@ -1,8 +1,8 @@
-from path import Path
+from pathlib import Path
 import torch
 import torch.nn as nn
 from copy import deepcopy
-from typing import Literal, Optional, List,
+from typing import Literal, Optional, List
 from torchtyping import TensorType
 from transformers.file_utils import ModelOutput
 import torch.nn.functional as F
@@ -256,6 +256,11 @@ class Magma(nn.Module):
         if is_url(checkpoint_path):
             raise NotImplementedError("Loading from url not implemented")
         sd = torch.load(checkpoint_path, map_location=torch.device("cpu"))
-        model.load_state_dict(sd)
+        if "module" in sd.keys():
+            sd = sd["module"]
+
+        # TODO: remove padding in case lm head dimensions don't match up:
+
+        model.load_state_dict(sd, strict=False)
         return model
 

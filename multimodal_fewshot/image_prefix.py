@@ -50,7 +50,7 @@ class ImagePrefix(nn.Module):
             config.encoder_name,
             pretrained=config.pretrained_img_encoder,
         )
-        self.encoder_out_dim = self.IMAGE_ENCODER_OUT_DIMS[
+        self.encoder_out_dim = ENCODER_OUT_DIMS[
             self.encoder_type
         ]  # out dim for image encoder
 
@@ -59,14 +59,14 @@ class ImagePrefix(nn.Module):
         # set the out seq len to that specified in the config, or for some models, the hardcoded value
         self.out_seq_len = (
             config.image_seq_len
-            if config.encoder_name not in self.IMAGE_ENCODER_SEQ_LENS
-            else self.IMAGE_ENCODER_SEQ_LENS[config.encoder_name]
+            if config.encoder_name not in ENCODER_SEQ_LENS
+            else ENCODER_SEQ_LENS[config.encoder_name]
         )
 
         # get the output projection
         proj_out_dim = (
             (self.out_dim * self.out_seq_len)
-            if self.encoder_type not in self.IMAGE_ENCODER_SEQ_LENS
+            if self.encoder_type not in ENCODER_SEQ_LENS
             else self.out_dim
         )
         self.proj = nn.Linear(self.encoder_out_dim, proj_out_dim)
@@ -86,7 +86,7 @@ class ImagePrefix(nn.Module):
         if logits.ndim == 4:
             logits = rearrange(logits, "b d 1 1 -> b d")
         elif logits.ndim == 3:
-            assert self.encoder_type in self.IMAGE_ENCODER_SEQ_LENS
+            assert self.encoder_type in ENCODER_SEQ_LENS
         else:
             assert logits.ndim == 2
 
@@ -94,7 +94,7 @@ class ImagePrefix(nn.Module):
 
         # reshape to desired output shape
         if (
-            self.encoder_type not in self.IMAGE_ENCODER_SEQ_LENS
+            self.encoder_type not in ENCODER_SEQ_LENS
         ):  # don't need to reshape those with fixed seq lens / no pooling
             logits = rearrange(
                 logits, "b (s d) -> b s d", d=self.out_dim, s=self.out_seq_len

@@ -6,7 +6,6 @@ import PIL
 import torch
 import random
 from functools import partial
-from .utils import CLIP_MODEL_MAP
 
 
 def pad_to_size(x, size=256):

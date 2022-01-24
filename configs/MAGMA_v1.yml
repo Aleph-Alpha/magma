@@ -24,8 +24,6 @@
     train_dataset_dir: '/mnt/localdisk/conceptual_captions',
     eval_dataset_name: 'coco',
     eval_dataset_dir: '/mnt/localdisk/coco_data',
-    vqa_dir: "/mnt/localdisk/vqa",
-    gqa_dir: "/mnt/localdisk/gqa",
     
     save: "/mnt/shared_vol/checkpoints/multimodal_transformer_rn50x16",
     load: "/mnt/shared_vol/checkpoints/multimodal_transformer_rn50x16",
