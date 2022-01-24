@@ -18,8 +18,9 @@ from .adapters import (
 )
 from .image_prefix import ImagePrefix
 from .sampling import generate
-from .utils import build_labels, is_url
+from .utils import build_labels, is_url, print_main
 from .transforms import get_transforms
+
 # ------------------------- Magma main class ----------------------------------
 
 
@@ -61,7 +62,8 @@ class Magma(nn.Module):
         )
 
         self.image_prefix = ImagePrefix(
-            config=config, out_dim=self.lm.config.hidden_size,
+            config=config,
+            out_dim=self.lm.config.hidden_size,
         )
 
         # might change based on the type of image encoder, so get from prefix instead of config
@@ -144,7 +146,12 @@ class Magma(nn.Module):
                         downsample_factor=downsample_factor,
                         **adapter_kwargs,
                     )
-                    adapter_layer = nn.Sequential(*[mlp, adpt,])
+                    adapter_layer = nn.Sequential(
+                        *[
+                            mlp,
+                            adpt,
+                        ]
+                    )
                 setattr(self.transformer[l], ff_attr, adapter_layer)
             else:
                 if self.attn_adapter_added:
@@ -252,6 +259,7 @@ class Magma(nn.Module):
         """
         Loads a model checkpoint from disk / url
         """
+        print_main(f"loading magma model from checkpoint {checkpoint_path}...")
         model = cls(config_path, model_dir=model_dir)
         if is_url(checkpoint_path):
             raise NotImplementedError("Loading from url not implemented")
@@ -259,8 +267,10 @@ class Magma(nn.Module):
         if "module" in sd.keys():
             sd = sd["module"]
 
-        # TODO: remove padding in case lm head dimensions don't match up:
+        # This is a hack to load the old checkpoint. TODO: directly release a modified checkpoint
+        sd["lm.lm_head.weight"] = sd["lm.lm_head.weight"][:50258, :]
+        sd["lm.lm_head.bias"] = sd["lm.lm_head.bias"][:50258]
 
         model.load_state_dict(sd, strict=False)
+        print_main("magma model successfully loaded")
         return model
-
