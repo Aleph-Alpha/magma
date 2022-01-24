@@ -17,7 +17,7 @@ from .model import (
 ## for downloading checkpoint
 import gdown
 
-class Magma(nn.Module):
+class Magma():
     def __init__(
         self,  
         config_path,
@@ -26,6 +26,7 @@ class Magma(nn.Module):
         lm_from_pretrained = False,
         device = 'cuda:0',
         checkpoint_path = 'mp_rank_00_model_states.pt',
+        eval_mode = True
     ):
         super().__init__()
 
@@ -56,12 +57,15 @@ class Magma(nn.Module):
         self.image_transforms = get_transforms(self.config.image_size, model= self.model)
 
         if checkpoint_path is not None:
-            sd = torch.load(checkpoint_path, map_location= self.device)
+            sd = torch.load(checkpoint_path, map_location= 'cpu')
             self.model.load_state_dict(sd["module"])
         
-        self.model.device = self.device
+        self.model.half()
 
-        self.model.half().eval()
+        if eval_mode == True:
+            self.model.eval()
+            
+        self.model.to(self.device)
 
     def download_checkpoint(self, save_as):
         '''
@@ -117,6 +121,22 @@ class Magma(nn.Module):
 
         return output
 
+    def __call__(
+        self,
+        x, 
+        output_hidden_states = False,
+        output_attentions = False,
+        past_key_values = None,
+        use_cache = False,
+    ):
+        return self.forward(
+            x = x, 
+            output_hidden_states = output_hidden_states, 
+            output_attentions = output_attentions, 
+            past_key_values = past_key_values, 
+            use_cache = use_cache, 
+        )
+
     @torch.no_grad()
     def generate(
         self, 
@@ -134,8 +154,8 @@ class Magma(nn.Module):
             temperature=temperature,
             filter_threshold = filter_threshold,
             filter_logits_fn = filter_logits_fn,
+            max_steps = num_tokens,
             remove_tokens_after_eos= False,
-
         )[0]
 
         return output
