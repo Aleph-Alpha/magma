@@ -271,10 +271,31 @@ class Magma(nn.Module):
         if "module" in sd.keys():
             sd = sd["module"]
 
-        # This is a hack to load the old checkpoint. TODO: directly release a modified checkpoint
+        #### This is a hack to load the old checkpoint. TODO: directly release a modified checkpoint
         sd["lm.lm_head.weight"] = sd["lm.lm_head.weight"][:50258, :]
         sd["lm.lm_head.bias"] = sd["lm.lm_head.bias"][:50258]
 
-        model.load_state_dict(sd, strict=False)
+        new_sd = {}
+        for key, value in sd.items():
+            if "attention" in key:
+                new_key = key.replace("attention.", "")
+                new_sd[new_key] = value
+            elif "c_fc" in key:
+                new_key = key.replace("c_fc", "fc_in")
+                new_sd[new_key] = value
+            elif "c_proj" in key:
+                new_key = key.replace("c_proj", "fc_out")
+                new_sd[new_key] = value
+            else:
+                new_sd[key] = value
+
+        # The below print statement evaluates to false on testing, implying that gpt-j weights
+        # in our checkpoint are different from the ones in the latest release
+        old_sd = model.state_dict()
+        print(
+            all([torch.all(old_sd[key] == new_sd[key]).item() for key in old_sd.keys()])
+        )
+
+        model.load_state_dict(new_sd, strict=False)
         print_main("magma model successfully loaded")
         return model
