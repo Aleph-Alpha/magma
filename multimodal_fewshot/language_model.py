@@ -1,87 +1,45 @@
 import torch
-from transformers import (
-    GPTNeoForCausalLM,
-    GPT2LMHeadModel,
-    GPTJForCausalLM,
-    GPT2Config,
-    GPTJConfig,
-    GPTNeoConfig,
-)
+from transformers import GPTNeoForCausalLM, AutoConfig, GPT2LMHeadModel
 from .utils import print_main
+from pathlib import Path
 from transformers.modeling_utils import no_init_weights
-import contextlib
 
 LANGUAGE_MODELS = [
-    "EleutherAI/gpt-neo-2.7B",
-    "EleutherAI/gpt-neo-1.3B",
-    "EleutherAI/gpt-neo-125M",
-    "gpt2",
-    "EleutherAI/gpt-j-6B",
+    "gptj",
 ]
 
 
-def _get_hf_config_class(name):
-    if "gpt2" in name:
-        return GPT2Config
-
-    elif "gpt-j" in name:
-        return GPTJConfig
-
-    else:
-        return GPTNeoConfig
-
-
-def _get_hf_model_class(name):
-    if "gpt2" in name:
-        return GPT2LMHeadModel
-
-    elif "gpt-j" in name:
-        return GPTJForCausalLM
-
-    else:
-        return GPTNeoForCausalLM
+def gptj_config():
+    config = AutoConfig.from_pretrained("EleutherAI/gpt-neo-2.7B")
+    config.attention_layers = ["global"] * 28
+    config.attention_types = [["global"], 28]
+    config.num_layers = 28
+    config.num_heads = 16
+    config.hidden_size = 256 * config.num_heads
+    config.vocab_size = 50400
+    config.rotary = True
+    config.rotary_dim = 64
+    config.jax = True
+    config.gradient_checkpointing = True
+    return config
 
 
-def _load_hf_model(config, name, from_pretrained=False, cache_dir=None):
-    model_class = _get_hf_model_class(name)
-
-    if from_pretrained:
-        print_main("loading language model from pretrained weights...")
-        return model_class.from_pretrained(name, config=config, cache_dir=cache_dir)
-    else:
-        print_main("initializing language model without pretrained weights...")
-        return model_class(config)
-
-
-def get_language_model(
-    name: str,
+def get_gptj(
     gradient_checkpointing: bool = True,
-    training=True,
-    from_pretrained=True,
-    model_dir="/data/models/",
-    no_init=True,
+    from_pretrained=False,
 ) -> torch.nn.Module:
     """
-    Loads language model from HF
+    Loads GPTJ language model from HF
     """
-
-    assert name in LANGUAGE_MODELS, f"{name} is not a valid language model"
-
-    # config = AutoConfig.from_pretrained(name, cache_dir=model_dir)
-    config = _get_hf_config_class(name).from_pretrained(name)
+    print_main("Loading GPTJ language model...")
+    config = gptj_config()
     config.gradient_checkpointing = gradient_checkpointing
     if gradient_checkpointing:
         config.use_cache = False
     config.model_device = "cpu"
-
-    ctx = no_init_weights if no_init else contextlib.nullcontext
-    with ctx():
-        model = _load_hf_model(
-            config, name, from_pretrained=from_pretrained, cache_dir=model_dir
-        )
-
-    print_main("done!")
-
-    if training:
-        model.train()
+    if from_pretrained:
+        raise NotImplemented("GPTJ pretrained not implemented")
+    else:
+        with no_init_weights():
+            model = GPTNeoForCausalLM(config=config)
     return model

@@ -54,6 +54,10 @@ def get_tokenizer(name="gpt2", sequence_length=2048):
         tokenizer.pad_token_id = tokenizer.eos_token
         tokenizer.padding_side = "right"
         tokenizer.model_max_length = sequence_length
+        # setup lm settings
+        tokenizer.add_special_tokens(
+            {"cls_token": "<|image|>"}
+        )  # add special image token to tokenizer
     else:
         raise ValueError(f"Tokenizer {name} not recognized")
     return tokenizer
@@ -341,7 +345,7 @@ def build_labels(
     """
     Builds labels from input embeddings.
 
-    Masks out the labels with -100 in positions up to the seq length of the embeddings, so loss is only computed for captions, 
+    Masks out the labels with -100 in positions up to the seq length of the embeddings, so loss is only computed for captions,
     and not for image tokens.
     Additionally, masks out everything *after* the first eos token.
     """
@@ -367,4 +371,3 @@ def build_labels(
 
 def is_url(string):
     return string.startswith("http://") or string.startswith("https://")
-

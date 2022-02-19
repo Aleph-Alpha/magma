@@ -5,23 +5,17 @@ import wandb
 from torch.utils.data import random_split, ConcatDataset
 from torch.optim import AdamW
 from tqdm import tqdm
-from pathlib import Path
 from functools import partial
-from torchvision.utils import make_grid
 from multimodal_fewshot.datasets import (
     collate_fn,
     ImgCptDataset,
 )
 from multimodal_fewshot.magma import (
     Magma,
-    MultimodalClassifier,
-    get_language_model,
 )
 from multimodal_fewshot.utils import (
-    count_parameters,
     is_main,
     cycle,
-    get_tokenizer,
     parse_args,
     wandb_log,
     wandb_init,
@@ -29,9 +23,7 @@ from multimodal_fewshot.utils import (
     load_model,
     print_main,
     configure_param_groups,
-    log_table,
 )
-from multimodal_fewshot.config import MultimodalConfig
 from multimodal_fewshot.train_loop import (
     eval_step,
     inference_step,

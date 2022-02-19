@@ -159,53 +159,6 @@ class ImgCptDataset(Dataset):
             return self[random.randint(0, len(self) - 1)]
 
 
-class ClassificationDatasetABC(Dataset, ABC):
-    """Abstract class for a classification dataset"""
-
-    def __init__(self):
-        super().__init__()
-
-    @property
-    @abstractmethod
-    def num_classes(self) -> int:
-        """Number of classes"""
-        pass
-
-    @abstractmethod
-    def getitem(
-        self, index
-    ) -> Tuple[TensorType["b", "c", "h", "w"], TensorType["b", "s"], TensorType["b"]]:
-        """A method called by __getitem__ that returns a torch.Tensor containing the image, a tokenized tensor containing the image caption, and an integer representing the class label"""
-        pass
-
-    def __getitem__(self, index):
-        image, caption, class_label = self.getitem(index)
-        return image, caption, class_label
-
-
-class ClassificationWrapper(ClassificationDatasetABC):
-    """Class for a classification dataset that wraps ImgCptDataset"""
-
-    def __init__(self, img_cpt_dataset: ImgCptDataset, num_classes: int):
-        self.dataset = img_cpt_dataset
-        self._num_classes = num_classes
-        super().__init__()
-
-    @property
-    def num_classes(self) -> int:
-        """Number of classes"""
-        return self._num_classes
-
-    def getitem(
-        self, index
-    ) -> Tuple[TensorType["b", "c", "h", "w"], TensorType["b", "s"], TensorType["b"]]:
-        """A method called by __getitem__ that returns a torch.Tensor containing the image, a tokenized tensor containing the image caption, and an integer representing the class label"""
-        img, caption = self.dataset[index]
-        metadata = self.dataset.data[index]["metadata"]
-        class_label = torch.tensor(metadata["class_label"])
-        return img, caption, class_label
-
-
 def collate_fn(batch_data: List[Tuple[torch.Tensor, torch.Tensor]], seq_len=2048):
 
     all_images, all_captions = list(

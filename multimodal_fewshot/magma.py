@@ -9,7 +9,7 @@ import torch.nn.functional as F
 from multimodal_fewshot.config import MultimodalConfig
 
 from multimodal_fewshot.utils import get_tokenizer
-from .language_model import get_language_model
+from .language_model import get_gptj
 from .adapters import (
     Adapter,
     ParallelAdapter,
@@ -25,7 +25,7 @@ from .transforms import get_transforms
 
 
 class Magma(nn.Module):
-    def __init__(self, config, device=None, model_dir="./", lm_from_pretrained=False):
+    def __init__(self, config, device=None):
         super().__init__()
 
         if isinstance(config, (str, Path)):
@@ -36,17 +36,11 @@ class Magma(nn.Module):
             assert isinstance(config, MultimodalConfig)
 
         self.config = config
-        self.lm = get_language_model(
-            config.lm_name, model_dir=model_dir, from_pretrained=lm_from_pretrained
-        )
+        self.lm = get_gptj()
         self.seq_len = self.lm.config.max_position_embeddings
 
         self.tokenizer = get_tokenizer("gpt2", sequence_length=self.seq_len)
 
-        # setup lm settings
-        self.tokenizer.add_special_tokens(
-            {"cls_token": "<|image|>"}
-        )  # add special image token to tokenizer
         self.image_token = self.tokenizer.cls_token_id
         self.eos_token = self.tokenizer.eos_token_id
         self.lm.resize_token_embeddings(len(self.tokenizer))
@@ -212,7 +206,15 @@ class Magma(nn.Module):
         Generates captions for a batch of embeddings.
         """
 
-        return generate(self, embeddings, max_steps, temperature, top_k, top_p, decode)
+        return generate(
+            self,
+            embeddings=embeddings,
+            max_steps=max_steps,
+            temperature=temperature,
+            top_k=top_k,
+            top_p=top_p,
+            decode=decode,
+        )
 
     def forward(
         self,
@@ -255,47 +257,18 @@ class Magma(nn.Module):
         return lm_outputs
 
     @classmethod
-    def from_checkpoint(
-        cls, config_path, checkpoint_path, model_dir="./", lm_from_pretrained=False
-    ):
+    def from_checkpoint(cls, config_path, checkpoint_path):
         """
         Loads a model checkpoint from disk / url
         """
         print_main(f"loading magma model from checkpoint {checkpoint_path}...")
-        model = cls(
-            config_path, model_dir=model_dir, lm_from_pretrained=lm_from_pretrained
-        )
+        model = cls(config_path)
         if is_url(checkpoint_path):
             raise NotImplementedError("Loading from url not implemented")
         sd = torch.load(checkpoint_path, map_location=torch.device("cpu"))
         if "module" in sd.keys():
             sd = sd["module"]
 
-        #### This is a hack to load the old checkpoint. TODO: directly release a modified checkpoint
-        sd["lm.lm_head.weight"] = sd["lm.lm_head.weight"][:50258, :]
-        sd["lm.lm_head.bias"] = sd["lm.lm_head.bias"][:50258]
-
-        new_sd = {}
-        for key, value in sd.items():
-            if "attention" in key:
-                new_key = key.replace("attention.", "")
-                new_sd[new_key] = value
-            elif "c_fc" in key:
-                new_key = key.replace("c_fc", "fc_in")
-                new_sd[new_key] = value
-            elif "c_proj" in key:
-                new_key = key.replace("c_proj", "fc_out")
-                new_sd[new_key] = value
-            else:
-                new_sd[key] = value
-
-        # The below print statement evaluates to false on testing, implying that gpt-j weights
-        # in our checkpoint are different from the ones in the latest release
-        old_sd = model.state_dict()
-        print(
-            all([torch.all(old_sd[key] == new_sd[key]).item() for key in old_sd.keys()])
-        )
-
-        model.load_state_dict(new_sd, strict=False)
+        model.load_state_dict(sd, strict=False)
         print_main("magma model successfully loaded")
         return model

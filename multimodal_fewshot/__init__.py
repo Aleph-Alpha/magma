@@ -1,6 +1,6 @@
 from .config import MultimodalConfig
 from .magma import Magma
-from .language_model import get_language_model
+from .language_model import get_gptj
 from .transforms import get_transforms
 from .utils import (
     count_parameters,
