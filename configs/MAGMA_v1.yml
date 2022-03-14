@@ -1,0 +1,33 @@
+{
+    # image encoder settings
+    encoder_name: 'clip_resnet_large',
+    adapter_config: {"mlp": {"adapter_type": "normal", "downsample_factor": 4}},
+    freeze_img_encoder: false,
+    
+    # train settings 
+    batch_size: 256,
+    train_steps: 150000,
+    lr: 8.0e-4,
+    min_lr: 0.0,
+    lr_decay_iters: 300000,
+    image_enc_lr: 2.0e-6,
+    use_image_embed_layernorm: true,
+    image_embed_dropout_prob: 0.1, 
+    image_size: 384,
+    
+    gradient_accumulation_steps: 8,
+    zero_stage: 2,
+    gradient_clipping: 1.0,
+
+    # dataset / save / load settings
+    train_dataset_name: 'conceptual_captions',
+    train_dataset_dir: '/mnt/localdisk/conceptual_captions',
+    eval_dataset_name: 'coco',
+    eval_dataset_dir: '/mnt/localdisk/coco_data',
+    
+    save: "/mnt/shared_vol/checkpoints/multimodal_transformer_rn50x16",
+    load: "/mnt/shared_vol/checkpoints/multimodal_transformer_rn50x16",
+
+    eval_every: 100,
+
+}

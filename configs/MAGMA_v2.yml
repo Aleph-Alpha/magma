@@ -1,0 +1,36 @@
+{
+    # image encoder settings
+    encoder_name: 'clip_resnet_large',
+    adapter_config: {"mlp": {"adapter_type": "normal", "downsample_factor": 8}, "attention": {"adapter_type": "normal", "downsample_factor": 8}},
+    freeze_img_encoder: false,
+    
+    # train settings 
+    batch_size: 256,
+    train_steps: 150000,
+    lr: 8.0e-4,
+    min_lr: 0.0,
+    lr_decay_iters: 300000,
+    image_enc_lr: 2.0e-6,
+    use_image_embed_layernorm: true,
+    image_embed_dropout_prob: 0.1, 
+    image_size: 384,
+    
+    gradient_accumulation_steps: 4,
+    zero_stage: 2,
+    gradient_clipping: 1.0,
+
+    # dataset / save / load settings
+    dataset_type: 'new',
+    train_dataset_dir: ['/mnt/localdisk/laion', '/mnt/brick/CC3M_converted', '/mnt/localdisk/localized_narratives', '/mnt/localdisk/visual_genome_converted', '/mnt/localdisk/hateful_memes_converted', '/mnt/localdisk/coco_converted', '/mnt/brick/wit_converted', '/mnt/localdisk/gqa_train_converted', '/mnt/localdisk/vqa_train_converted', '/mnt/localdisk/okvqa_train_converted'], #'/mnt/brick/wit_converted'
+
+    eval_dataset_dir: null, # if this is none, train dataset will be split
+    vqa_dir: "/mnt/localdisk/vqa_val_converted",
+    gqa_dir: "/mnt/localdisk/gqa_val_converted",
+    
+    save: "/mnt/shared_vol/checkpoints/MAGMA_RN50x16",
+    load: "/mnt/shared_vol/checkpoints/MAGMA_RN50x16",
+
+    eval_every: 250,
+    wandb_project: "MAGMA_training",
+    name: "MAGMA_RN50x16_v1"
+}

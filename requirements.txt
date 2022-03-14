@@ -1,0 +1,9 @@
+torchtyping
+typeguard
+git+git://github.com/finetuneanon/transformers.git#egg=transformers
+gdown 
+tqdm
+timm
+git+https://github.com/openai/CLIP.git
+deepspeed
+wandb
