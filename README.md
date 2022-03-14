@@ -8,9 +8,9 @@ Constantin (CoEich), Mayukh (Mayukhdeb), Samuel (sweinbach), Sid (sdtblck)
 
 ### paper
 
-Constantin Eichenberg, Sidney Black, Samuel Weinbach, **Aleph Alpha**
+Constantin Eichenberg, Sidney Black, Samuel Weinbach, [Aleph Alpha](https://aleph-alpha.com "Independent AI R&D")
 
-Letitia Parcalabescu, Anette Frank, **Heidelberg University**
+Letitia Parcalabescu, Anette Frank, [Heidelberg University](https://www.cl.uni-heidelberg.de "Computational Linguistics at Heidelberg University")
 
 
 ## Abstract
