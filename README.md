@@ -4,7 +4,7 @@
 
 ### repo (alphabetical)
 
-Constantin (CoEich), Mayukh (Mayukhdeb), Samuel (sweinbach), Sid (sdtblck)
+Constantin (CoEich), Mayukh (Mayukhdeb), Sid (sdtblck)
 
 ### paper
 
