@@ -2,7 +2,7 @@
 
 ## Authors
 
-### repo (althabetical)
+### repo (alphabetical)
 
 Constantin (CoEich), Mayukh (Mayukhdeb), Samuel (sweinbach), Sid (sdtblck)
 
