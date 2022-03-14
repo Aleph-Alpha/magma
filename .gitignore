@@ -3,11 +3,3 @@
 *.pyc
 wandb/*
 aws*
-*.pt
-*.zip
-*.jpg
-*.png
-*.jpeg
-*.gif
-*.JPEG
-*.json
