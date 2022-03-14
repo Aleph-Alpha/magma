@@ -1,8 +1,17 @@
 # MAGMA -- Multimodal Augmentation of Generative Models through Adapter-based Finetuning
 
-## Authors (althabetical)
+## Authors
+
+### repo (althabetical)
 
 Constantin (CoEich), Mayukh (Mayukhdeb), Samuel (sweinbach), Sid (sdtblck)
+
+### paper
+
+Constantin Eichenberg, Sidney Black, Samuel Weinbach, **Aleph Alpha**
+
+Letitia Parcalabescu, Anette Frank, **Heidelberg University**
+
 
 ## Abstract
 
@@ -10,7 +19,7 @@ Large-scale pretraining is fast becoming the norm in Vision-Language (VL) modeli
 
 Paper on arXiv: https://arxiv.org/abs/2112.05253
 
-## Examples
+## Examples (via Aleph Alpha playground)
 
  Photos |  Text & Technical
  --- | --- 
