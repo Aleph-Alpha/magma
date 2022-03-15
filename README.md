@@ -23,8 +23,8 @@ Paper on arXiv: https://arxiv.org/abs/2112.05253
 
  Photos |  Text & Technical
  --- | --- 
- ![A man covering a woman's eyes to hide a present](examples/magma_present.png?raw=true "Example_1") |   ![A hand drawn treasure map](examples/magma_treasure.png?raw=true "Example_3")
-![A fallen tree is blocking a road](examples/magma_tree.png?raw=true "Example_2")   | ![A software architecture](examples/magma_oracle.png?raw=true "Example_4") 
+ ![A man covering a woman's eyes to hide a present](examples/magma_present.jpg?raw=true "Example_1") |   ![A hand drawn treasure map](examples/magma_treasure.png?raw=true "Example_3")
+![A fallen tree is blocking a road](examples/magma_tree.jpg?raw=true "Example_2")   | ![A software architecture](examples/magma_oracle.png?raw=true "Example_4") 
 
 
  ## Model design
