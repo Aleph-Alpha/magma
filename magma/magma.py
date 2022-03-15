@@ -281,7 +281,7 @@ class Magma(nn.Module):
         Loads a model checkpoint from disk / downlods from url if not present
         """
 
-        checkpoint_url = 'https://drive.google.com/u/0/uc?id=1EiAY3IcKWmGADaLDzdG25ykQghUwza6L&export=download'
+        checkpoint_url = 'https://bit.ly/aleph-alpha-magma'
        
         if exists(checkpoint_path) ==  False:
             print_main(f'checkpoint: {checkpoint_path} does not exist, downloading model')

@@ -32,8 +32,6 @@ Paper on arXiv: https://arxiv.org/abs/2112.05253
 ![MAGMA model design](examples/model.jpg?raw=true "MAGMA model design") 
 
 
- 
-
 ## About the repository
 
 In this repository we share the main parts of the codebase for training and inference of our MAGMA VL model. The main use of the repo is for downloading our pretrained weights and interacting with the model. We include a script for data parallel training with Deepspeed for finetuning our models or training a MAGMA model from scratch.
@@ -46,6 +44,10 @@ Then install all further requirements by
 ```bash
 pip install -r requirements.txt
 ```
+
+## Checkpoint
+
+We also publish the model checkpoint that has been used for the publication. It is hosted on our infrastructure and downloads automatically. It can be downloaded manually here: https://bit.ly/aleph-alpha-magma 
 
 ## Loading a model for inference
 
