@@ -1,6 +1,6 @@
 torchtyping
 typeguard
-git+git://github.com/finetuneanon/transformers.git#egg=transformers
+git+https://github.com/finetuneanon/transformers.git#egg=transformers
 gdown 
 tqdm
 timm

@@ -9,6 +9,7 @@ import yaml
 import torch
 from collections import defaultdict
 from torchtyping import TensorType
+import gdown
 
 
 def is_main():
@@ -367,7 +368,5 @@ def is_url(string):
     return string.startswith("http://") or string.startswith("https://")
 
 def download_checkpoint(checkpoint_url, save_as):
-    '''
-    Replace with something else later on when we host the model checkpoint somewhere else
-    '''
+    
     gdown.download(url = checkpoint_url, output = save_as, quiet=False)
