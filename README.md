@@ -19,6 +19,10 @@ Large-scale pretraining is fast becoming the norm in Vision-Language (VL) modeli
 
 Paper on arXiv: https://arxiv.org/abs/2112.05253
 
+## Web Demo
+
+Integrated into [Huggingface Spaces 🤗](https://huggingface.co/spaces) using [Gradio](https://github.com/gradio-app/gradio). Try out the Web Demo: [![Hugging Face Spaces](https://img.shields.io/badge/%F0%9F%A4%97%20Hugging%20Face-Spaces-blue)](https://huggingface.co/spaces/EleutherAI/magma)
+
 ## Examples (via Aleph Alpha playground)
 
  Photos |  Text & Technical
