@@ -39,7 +39,14 @@ In this repository we share the main parts of the codebase for training and infe
 ## Installation
 
 Make sure PyTorch (Ver >= 1.9.0) and Torchvision are installed. See https://pytorch.org/get-started/locally/.
-Then install all further requirements by 
+
+You can pip install from the git repository with:
+
+```bash
+pip install git+https://github.com/Aleph-Alpha/magma.git
+```
+
+Or if you've cloned the repo, you can install all further requirements by:
 
 ```bash
 pip install -r requirements.txt
