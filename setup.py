@@ -1,7 +1,8 @@
 import setuptools
-
+# c83109932f4592b871ec4c60326df3b4173b021a
+# {repo}/archive/{commit}.zip
 github_source_dependencies = [
-        'transformers @ https://github.com/finetuneanon/transformers.git',
+        'transformers @ https://github.com/finetuneanon/transformers/archive/master.zip',
         'clip @ https://github.com/openai/CLIP.git'
 ]
 
