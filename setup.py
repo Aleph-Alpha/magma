@@ -3,7 +3,7 @@ import setuptools
 # {repo}/archive/{commit}.zip
 github_source_dependencies = [
         'transformers @ https://github.com/finetuneanon/transformers/archive/master.zip',
-        'clip @ https://github.com/openai/CLIP.git'
+        'clip @ https://github.com/openai/CLIP/archive/master.zip'
 ]
 
 with open("README.md", "r") as fh:
