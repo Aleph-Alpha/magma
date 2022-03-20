@@ -1,10 +1,18 @@
 import setuptools
 
+github_source_dependencies = [
+        'transformers @ https://github.com/finetuneanon/transformers.git#egg=transformers',
+        'clip @ https://github.com/openai/CLIP.git'
+]
+
 with open("README.md", "r") as fh:
     long_description = fh.read()
 
 with open("requirements_for_setup.txt") as f:
     required = f.read().splitlines()
+
+    for dep in github_source_dependencies:
+        required.append(dep)
 
 setuptools.setup(
     name="magma",
@@ -19,10 +27,6 @@ setuptools.setup(
     install_requires=required,
     python_requires=">=3.9",
     include_package_data=True,
-    dependency_links = [
-        'https://github.com/finetuneanon/transformers.git#egg=transformers',
-        'https://github.com/openai/CLIP.git'
-    ],
     classifiers=[
         "Natural Language :: English",
         "Programming Language :: Python :: 3.8",
