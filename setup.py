@@ -2,7 +2,7 @@ import setuptools
 # c83109932f4592b871ec4c60326df3b4173b021a
 # {repo}/archive/{commit}.zip
 github_source_dependencies = [
-        'transformers @ https://github.com/finetuneanon/transformers/archive/master.zip',
+        'transformers @ https://github.com/finetuneanon/transformers/archive/gpt-neo-localattention3-rp-b.zip#egg=transformers',
         'clip @ https://github.com/openai/CLIP/archive/master.zip'
 ]
 
