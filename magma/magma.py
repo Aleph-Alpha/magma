@@ -278,7 +278,7 @@ class Magma(nn.Module):
     @classmethod
     def from_checkpoint(cls, config_path, checkpoint_path, device = 'cpu'):
         """
-        Loads a model checkpoint from disk / downlods from url if not present
+        Loads a model checkpoint from disk / downloads from url if not present
         """
 
         checkpoint_url = 'https://bit.ly/aleph-alpha-magma-download'
@@ -293,9 +293,9 @@ class Magma(nn.Module):
         if "module" in sd.keys():
             sd = sd["module"]
 
-        print_main('loading checkpoint magma')
+        print_main(f'loading magma checkpoint from: {checkpoint_path}')
         model.load_state_dict(sd, strict=False)
-        print_main("magma model successfully loaded")
+        print_main("magma successfully loaded")
 
         model.half().to(device)
         return model
