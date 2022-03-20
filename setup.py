@@ -1,7 +1,7 @@
 import setuptools
 
 github_source_dependencies = [
-        'transformers @ https://github.com/finetuneanon/transformers.git#egg=transformers',
+        'transformers @ https://github.com/finetuneanon/transformers.git',
         'clip @ https://github.com/openai/CLIP.git'
 ]
 
