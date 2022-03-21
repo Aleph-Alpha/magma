@@ -60,6 +60,8 @@ pip install -r requirements.txt
 ## Checkpoint
 
 We also publish the model checkpoint that has been used for the publication. It is hosted on our infrastructure and downloads automatically. It can be downloaded manually here: https://bit.ly/aleph_alpha_magma_download 
+	
+This checkpoint can also be [played around with on a space](https://huggingface.co/spaces/EleutherAI/magma) managed by [Heath Mitchell](https://github.com/Heath123), [AK](https://mobile.twitter.com/ak92501), and [Stella Biderman](https://stellabiderman.com). (This is a 3rd party space, not managed by Aleph Alpha.)
 
 ## Loading a model for inference
 
