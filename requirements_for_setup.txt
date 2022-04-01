@@ -1,3 +1,4 @@
+torch
 torchtyping
 typeguard
 gdown 
@@ -5,3 +6,6 @@ tqdm
 timm
 deepspeed
 wandb
+transformers
+einops
+clip-by-openai
