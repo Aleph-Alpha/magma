@@ -297,5 +297,5 @@ class Magma(nn.Module):
         model.load_state_dict(sd, strict=False)
         print_main("magma successfully loaded")
 
-        model.half().to(device)
+        model.half().to(device).eval()
         return model
