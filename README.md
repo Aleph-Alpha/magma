@@ -50,7 +50,7 @@ pip install git+https://github.com/Aleph-Alpha/magma.git
 
 Make sure that you also download the config:
 ```
-mkdir configs; wget -O configs/MAGMA_v1.yml https://raw.githubusercontent.com/Aleph-Alpha/magma/add-setup/configs/MAGMA_v1.yml
+mkdir configs; wget -O configs/MAGMA_v1.yml https://raw.githubusercontent.com/Aleph-Alpha/magma/master/configs/MAGMA_v1.yml
 ```
 
 Or if you've cloned the repo, you can install all further requirements by:
