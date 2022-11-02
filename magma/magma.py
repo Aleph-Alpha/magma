@@ -40,7 +40,7 @@ class Magma(nn.Module):
             "cuda" if torch.cuda.is_available() else "cpu"
         )
         self.config = config
-        self.lm = get_gptj().to(self.device)
+        self.lm = get_gptj() #.to(self.device)
         self.seq_len = self.lm.config.max_position_embeddings
 
         self.tokenizer = get_tokenizer("gpt2", sequence_length=self.seq_len)
@@ -49,16 +49,16 @@ class Magma(nn.Module):
         self.eos_token = self.tokenizer.eos_token_id
         self.lm.resize_token_embeddings(len(self.tokenizer))
         self.lm.config.pad_token_id = self.tokenizer.eos_token_id
-        self.word_embedding = self.lm.transformer.wte.to(device)
+        self.word_embedding = self.lm.transformer.wte #.to(device)
         self.transformer = self.lm.transformer.h
 
         # adapter settings
         self.mlp_adapter_added, self.attn_adapter_added = False, False
-        
+
         self.image_prefix = ImagePrefix(
             config=config,
             out_dim=self.lm.config.hidden_size,
-        ).to(self.device)
+        ) #.to(self.device)
 
         # might change based on the type of image encoder, so get from prefix instead of config
         self.image_prefix_seq_len = self.image_prefix.out_seq_len
@@ -189,7 +189,7 @@ class Magma(nn.Module):
 
         if embed == True:
             return self.embed(input_list)
-        else: 
+        else:
             return input_list
 
     def embed(self, inputs: List[torch.Tensor]) -> TensorType["b", "s", "d"]:
@@ -282,7 +282,7 @@ class Magma(nn.Module):
         """
 
         checkpoint_url = 'https://bit.ly/aleph-alpha-magma-download'
-       
+
         if exists(checkpoint_path) ==  False:
             print_main(f'checkpoint: {checkpoint_path} does not exist, downloading model')
             download_checkpoint(checkpoint_url = checkpoint_url, save_as = checkpoint_path)
