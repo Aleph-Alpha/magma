@@ -77,7 +77,8 @@ if __name__ == "__main__":
 
     # load model + tokenizer:
     model = Magma(
-        args.config
+        args.config,
+        device=torch.device("cuda", args.local_rank)
     )  # for finetuning one might want to load the model via Magma.from_checkpoint(...) here
     tokenizer, config, transforms = model.tokenizer, model.config, model.transforms
 
