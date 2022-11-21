@@ -126,21 +126,16 @@ class MultimodalConfig:
                 },
             }
         self.deepspeed_config_params = {
-            # "train_batch_size": self.batch_size,
-            "train_micro_batch_size_per_gpu": self.train_micro_batch_size_per_gpu,
+            "train_batch_size": self.batch_size,
             "gradient_accumulation_steps": self.gradient_accumulation_steps,
             "gradient_clipping": self.gradient_clipping,
             "fp16": {"enabled": True, "loss_scale_window": 250},
             "scheduler": self.scheduler_dict,
             "zero_optimization": {
                 "stage": self.zero_stage,
-                "offload_optimizer": {
-                    "device": 'cpu'
-                },
                 "load_from_fp32_weights": False,
-                # "reduce_bucket_size": 2e8
             },
-            'amp_enabled': True
+
         }
 
         if self.name is None:
