@@ -1,0 +1,3 @@
+[submodule "activation-functions"]
+	path = activation-functions
+	url = https://github.com/k4ntz/activation-functions.git
