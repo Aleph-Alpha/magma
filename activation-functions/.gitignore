@@ -1,0 +1,23 @@
+# Project exclude paths
+/venv/
+*.pyx
+*.pyc
+.idea
+#src/.tox
+src/build
+src/dist
+*__pycache__*
+*egg-info
+*cuda*.so
+#src/pypi_build_scripts
+#src/scripts
+*build
+dist
+.tox
+.ipynb_checkpoints
+venv
+.pytest_cache
+.coverage
+.eggs/
+examples/pytorch/data/
+data

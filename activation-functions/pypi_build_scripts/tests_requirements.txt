@@ -1,0 +1,6 @@
+numpy
+scipy
+matplotlib
+torch>=1.5.0
+tensorflow>=2.0.0
+mxnet-cu102==1.7.0

@@ -1,0 +1,10 @@
+numpy
+scipy
+matplotlib
+torch
+tqdm
+seaborn
+termcolor
+setuptools>=49.4.0
+# tensorflow>=2.0.0
+mxnet-cu102==1.7.0
