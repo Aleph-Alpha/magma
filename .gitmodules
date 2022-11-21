@@ -1,3 +1,0 @@
-[submodule "activation-functions"]
-	path = activation-functions
-	url = ../magma/activation-functions
