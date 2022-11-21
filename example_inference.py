@@ -1,27 +1,220 @@
-from magma import Magma
-from magma.image_input import ImageInput
-
-model = Magma.from_checkpoint(
-    config_path = "configs/MAGMA_v1.yml",
-    checkpoint_path = "./mp_rank_00_model_states.pt",
-    device = 'cuda:0'
+from magma.train_loop import (
+    eval_step,
+    inference_step,
+    train_step,
 )
+from magma.utils import (
+    is_main,
+    cycle,
+    parse_args,
+    wandb_log,
+    wandb_init,
+    save_model,
+    load_model,
+    print_main,
+    configure_param_groups,
+)
+from magma.magma import (
+    Magma,
+)
+from magma.datasets import (
+    collate_fn,
+    ImgCptDataset,
+)
+import torch
+import torch.nn as nn
+import os
 
-inputs =[
-    ## supports urls and path/to/image
-    ImageInput('https://www.art-prints-on-demand.com/kunst/thomas_cole/woods_hi.jpg'),
-    'Describe the painting:'
-]
+import deepspeed
+import wandb
+from torch.utils.data import random_split, ConcatDataset
+from magma.config import MultimodalConfig
+from pathlib import Path
+from torch.optim import AdamW
+from tqdm import tqdm
+from functools import partial
+from rtpt import RTPT
+rtpt = RTPT(name_initials='MM',
+            experiment_name='Debugging OOMem Issues in Deepspeed. Do not Enter if you want your process to live :)', max_iterations=1000)
+rtpt.start()
 
-## returns a tensor of shape: (1, 149, 4096)
-embeddings = model.preprocess_inputs(inputs)  
 
-## returns a list of length embeddings.shape[0] (batch size)
-output = model.generate(
-    embeddings = embeddings,
-    max_steps = 6,
-    temperature = 0.7,
-    top_k = 0,
-)  
+def _load_img_cpt_datasets(dataset_dir, tokenizer, transforms):
+    if isinstance(dataset_dir, (list, tuple)):
+        return ConcatDataset(
+            [_load_img_cpt_datasets(d, tokenizer, transforms)
+             for d in dataset_dir]
+        )
+    elif isinstance(dataset_dir, str):
+        return ImgCptDataset(dataset_dir, tokenizer=tokenizer, transforms=transforms)
+    else:
+        raise TypeError("dataset dir wrong type")
 
-print(output[0]) ##  A cabin on a lake
+
+def get_pretraining_datasets(config, tokenizer, transforms):
+    # if config.train_dataset_dir is a list, load all datasets + join together
+    train_dataset = _load_img_cpt_datasets(
+        config.train_dataset_dir, tokenizer, transforms
+    )
+    # if no dedicated eval sets are given, use a percentage of the train dataset
+    if config.eval_dataset_dir is None:
+        eval_len = int(len(train_dataset) * config.eval_dataset_pct)
+        train_len = len(train_dataset) - eval_len
+        print(
+            f"Randomly splitting train_dataset into two datasets of length {train_len} and {eval_len}"
+        )
+        train_dataset, eval_dataset = random_split(
+            train_dataset, [train_len, eval_len])
+    else:
+        eval_dataset = _load_img_cpt_datasets(
+            config.eval_dataset_dir, tokenizer, transforms
+        )
+
+    print_main(f"Loaded train dataset with {len(train_dataset)} samples")
+    print_main(f"Loaded eval dataset with {len(eval_dataset)} samples")
+
+    return train_dataset, eval_dataset
+
+
+# tell tokenizers not to do parallelism
+os.environ["TOKENIZERS_PARALLELISM"] = "false"
+
+if __name__ == "__main__":
+
+    # parse command line arguments:
+    args = parse_args()
+    deepspeed.init_distributed()
+
+    if isinstance(args.config, (str, Path)):
+        config = MultimodalConfig.from_yml(
+            args.config
+        )
+    print(config)
+    if config.from_checkpoint:
+        print("FROM CHECKPOINT")
+        model = Magma.from_checkpoint(
+            args.config, './model_checkpoints/multimodal_transformer_rn50x16/global_step150/mp_rank_00_model_states.pt')
+    else:
+        model = Magma(
+            args.config,
+        )
+
+    tokenizer, config, transforms = model.tokenizer, model.config, model.transforms
+
+    # filter frozen from trainable parameters:
+    trainable_parameters = configure_param_groups(model, config)
+
+    # load data:
+    train_dataset, eval_dataset = get_pretraining_datasets(
+        config, tokenizer, transforms
+    )
+
+    # l = [print(module) for module in model.modules()
+    #      if not isinstance(module, nn.Sequential)]
+
+    print_main(f"Loaded train dataset with {len(train_dataset)} samples")
+    print_main(f"Loaded eval dataset with {len(eval_dataset)} samples")
+
+    opt = AdamW(
+        trainable_parameters,
+        config.lr,
+        betas=(0.9, 0.95),
+        weight_decay=config.weight_decay,
+        eps=1e-04
+    )
+
+    model_engine, opt, train_loader, lr_scheduler = deepspeed.initialize(
+        args=args,
+        model=model,
+        optimizer=opt,
+        model_parameters=trainable_parameters,
+        training_data=train_dataset,
+        collate_fn=partial(collate_fn, seq_len=model.seq_len),
+        config_params=config.deepspeed_config_params,
+    )
+    eval_loader = cycle(model_engine.deepspeed_io(eval_dataset))
+    train_loader = cycle(train_loader)
+
+    scaler = torch.cuda.amp.GradScaler()
+
+    # initialize training
+    global_step = 0
+    if config.load:
+        # loads a deepspeed checkpoint if provided. For finetuning, set load_optimizer to false
+        previous_global_step = load_model(
+            model_engine,
+            config.load,
+            load_optimizer_states=config.load_optimizer,
+            load_lr_scheduler_states=config.load_optimizer,
+        )
+
+        if config.load_optimizer:
+            global_step = previous_global_step
+
+    pbar = tqdm(
+        range(0, config.train_steps),
+        desc="training...",
+        initial=global_step,
+        total=config.train_steps,
+        disable=not is_main(),
+    )
+    wandb_init(
+        project=config.wandb_project,
+        name=config.name or wandb.util.generate_id(),
+        config=config,
+    )
+
+    # training loop
+    for i in pbar:
+        if global_step >= config.train_steps:
+            break
+
+        # train step
+        loss = train_step(config, train_loader, model_engine,
+                          scaler)
+
+        global_step += 1
+
+        if global_step % config.log_every == 0:
+            pbar.set_description(
+                f"training... Step: {global_step} Loss: {loss}")
+            current_lr = (
+                [lr for lr in lr_scheduler.get_lr()]
+                if lr_scheduler is not None
+                else config.lr
+            )
+            to_log = {"train/loss": loss, "train/lr": current_lr}
+            wandb_log(to_log, step=global_step)
+
+        # ##### Evaluation phase
+        # if global_step % config.eval_every == 0:
+        #     model_engine.eval()
+        #     with torch.no_grad():
+
+        #         ##### eval step:
+        #         eval_loss = eval_step(config, eval_loader, model_engine, device=torch.device("cuda", args.local_rank))
+
+        #         wandb_log({"eval/loss": eval_loss}, step=global_step)
+        #         pbar.set_description(
+        #             f"evaluating... Step: {global_step} Eval Loss: {eval_loss}"
+        #         )
+
+        #         ##### inference:
+        #         image_grid, caption = inference_step(config, eval_loader, model_engine)
+        #         wandb_log(
+        #             {"inference/image": wandb.Image(image_grid, caption=caption)},
+        #             step=global_step,
+        #         )
+
+        #     model_engine.train()
+
+        # ##### Save model
+        # if global_step % config.save_every == 0:
+        #     if config.save is not None:
+        #         save_model(model_engine, config.save, global_step)
+        #         print_main(f"saving model at step {global_step}")
+
+    # Save model after training is finished
+    if config.save is not None:
+        save_model(model_engine, config.save, global_step)
+        print_main(f"saving model at end of training (step {global_step})")

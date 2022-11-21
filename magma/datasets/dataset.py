@@ -68,7 +68,7 @@ def _load_paths(data_dir, sort=True):
     paths = []
     img_data_dir = data_dir / "image_data"
     for p in tqdm(
-        Path(img_data_dir).glob("*/*.json"),
+        Path(img_data_dir).glob("*.json"),
         desc=f"loading dataset paths from {str(data_dir)}",
     ):
         paths.append(p)

@@ -3,3 +3,7 @@
 *.pyc
 wandb/*
 aws*
+magma/datasets/train_data/**
+*.pt
+magma/model_checkpoints/**
+

@@ -12,7 +12,8 @@ def top_p_filter(logits: TensorType[..., "vocab"], threshold: float = 0.9):
     cum_probs = torch.cumsum(F.softmax(sorted_logits, dim=-1), dim=-1)
 
     sorted_indices_to_remove = cum_probs < (1 - threshold)
-    sorted_indices_to_remove[..., 1:] = sorted_indices_to_remove[..., :-1].clone()
+    sorted_indices_to_remove[...,
+                             1:] = sorted_indices_to_remove[..., :-1].clone()
     sorted_indices_to_remove[..., 0] = 0
 
     sorted_logits[sorted_indices_to_remove] = float("-inf")
@@ -34,7 +35,7 @@ def remove_tokens_after_eos(tensor, eos_token, image_token):
     # any tokens after and end of sequence token is produced are also set to the eos token, and removed
     eos_index = (tensor == eos_token).nonzero()
     if eos_index.any():
-        tensor[eos_index[0] :] = eos_token
+        tensor[eos_index[0]:] = eos_token
 
     tensor = tensor.tolist()
     return [i for i in tensor if (not i == image_token) and (not i == eos_token)]
@@ -72,7 +73,8 @@ def generate(
     past_key_values = None
 
     # init output with image tokens
-    out = torch.zeros((b, s), dtype=torch.long).to(model.device) + model.image_token
+    # .to(model.device) + model.image_token
+    out = torch.zeros((b, s), dtype=torch.long) + model.image_token
 
     # do sampling
     for i in range(max_steps):

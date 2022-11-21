@@ -1,15 +1,101 @@
 import torch
 import torch.nn as nn
 from torchtyping import TensorType
+from activations.torch import Rational
+
+import os
+import math
+
+local_rank = int(os.getenv('LOCAL_RANK', None))
+DEVICE = torch.device(
+    f"cuda:{local_rank}" if local_rank != None else "cpu"
+)
+
+
+class Activation_Function_Class(nn.Module):
+    """
+    Implementation of various activation function.
+    """
+
+    def __init__(self, hidden_act):
+        super().__init__()
+
+        if hidden_act.lower() == "relu":
+            self.f = nn.functional.relu
+        elif hidden_act.lower() == "tanh":
+            self.f = torch.tanh
+        elif hidden_act.lower() == "swish":
+
+            def swish(x):
+                return x * torch.sigmoid(x)
+
+            self.f = swish
+        elif hidden_act.lower() == "gelu":
+
+            def gelu_new(x):
+                """
+                Implementation of the gelu activation function currently in Google Bert repo (identical to OpenAI GPT).
+                Also see https://arxiv.org/abs/1606.08415
+                """
+                return 0.5 * x * (1 + torch.tanh(math.sqrt(2 / math.pi) * (x + 0.044715 * torch.pow(x, 3))))
+
+            self.f = gelu_new
+        elif hidden_act.lower() == "gelu_orig":
+            self.f = nn.functional.gelu
+        elif hidden_act.lower() == "leakyrelu":
+            self.f = nn.functional.leaky_relu
+        elif hidden_act.lower() == 'identity':
+            self.f = lambda x: x
+        elif hidden_act.lower() == 'one':
+            def one(x):
+                return torch.ones_like(x)
+            self.f = one
+        elif hidden_act.lower() == 'sigmoid':
+            self.f = torch.sigmoid
+        elif hidden_act.lower().startswith('rational:'):
+            func_name = hidden_act.lower().split(':', 1)[1]
+            self.f = Rational(
+                cuda=DEVICE, trainable=True, train_numerator=True,
+                train_denominator=True, version="A", approx_func=func_name
+            )
+
+    def forward(self, x):
+        # print("ADAPTER FORWARD")
+        return self.f(x)
+
+
+class PrintLayer(nn.Module):
+    def __init__(self, id):
+        super(PrintLayer, self).__init__()
+        self.id = id
+
+    def forward(self, x):
+        # Do your print / debug stuff here
+        if self.id:
+            print("AFTER", x.isnan().any())
+        else:
+            print("BEFORE ACT", x.isnan().any())
+        # print("BEFORE ACT", x.isnan().any())
+        return x
+
+    def backward(self, x):
+        # print('backward', id, x)
+        return x
 
 
 class Adapter(nn.Module):
+
     def __init__(
         self,
         dim: int,
         downsample_factor: int = 4,
-        activation: nn.Module = nn.ReLU,
+        hidden_act: str = "relu",
         add_layernorm: bool = False,
+        adapter_switch: bool = False,
+        initial_logits: list[float] = [0.5, 0.5],
+        initial_temperature: float = 0.1,
+        fixed_idx: int = None,
+
     ):
         super().__init__()
         layers = []
@@ -18,10 +104,20 @@ class Adapter(nn.Module):
         layers.extend(
             [
                 nn.Linear(dim, dim // downsample_factor),
-                activation(),
+                Activation_Function_Class(hidden_act),
                 nn.Linear(dim // downsample_factor, dim),
             ]
         )
+        self.adapter_switch = adapter_switch
+        if adapter_switch:
+            self.register_parameter(
+                'switch_logits', nn.Parameter(torch.tensor(initial_logits))
+            )
+
+            self.switch_temperature = torch.tensor(
+                [initial_temperature]).to(DEVICE)
+            self.gumbel = torch.distributions.Gumbel(0, 1)
+            self.fixed_idx = fixed_idx
         self.adapter = nn.Sequential(*layers)
         self.adapter.apply(self.init_weights)
 
@@ -29,13 +125,40 @@ class Adapter(nn.Module):
         if isinstance(m, nn.Linear):
             torch.nn.init.normal_(m.weight, std=std)
             torch.nn.init.normal_(m.bias, std=std)
-            m.weight.data = torch.clamp(m.weight.data, min=-2 * std, max=2 * std)
+            m.weight.data = torch.clamp(
+                m.weight.data, min=-2 * std, max=2 * std)
             m.bias.data = torch.clamp(m.bias.data, min=-2 * std, max=2 * std)
         elif isinstance(m, nn.LayerNorm):
             m.bias.data.zero_()
             m.weight.data.fill_(1.0)
 
+    def train(self, mode: bool = True):
+        if self.adapter_switch:
+            if not mode:
+                self.fixed_idx = torch.argmax(
+                    self.switch_logits, dim=-1).item()
+            else:
+                self.fixed_idx = None
+        return super().train(mode)
+
     def forward(self, x: TensorType["b", "s", "d"]) -> TensorType["b", "s", "d"]:
+        if self.adapter_switch:
+            output = self.adapter(x)
+            stacked = torch.stack((output, x), dim=2)
+
+            batch_size, sequence_length, num_classes, hidden_dim_size = stacked.size()
+            if not self.training:
+                return x[:, :, self.fixed_idx, :]
+            sample_size = [batch_size, num_classes]
+
+            g = self.gumbel.sample(sample_size).to(DEVICE)
+
+            weights = torch.softmax(
+                (g + self.switch_logits)/self.switch_temperature, dim=1).half()
+
+            y = torch.einsum('bsnd, bn -> bsd', stacked, weights)
+
+            return y
         return self.adapter(x) + x
 
 
@@ -76,10 +199,10 @@ class ParallelAdapterWrapper(ParallelAdapter):
         downsample_factor: int = 4,
         scaled: bool = False,
         add_layernorm: bool = False,
-        activation: nn.Module = nn.ReLU,
+        activation: nn.Module = nn.ReLU
     ):
         super().__init__(
-            module, dim, downsample_factor, scaled, add_layernorm, activation
+            module, dim, downsample_factor, scaled, add_layernorm, activation, device
         )
 
     def forward(self, x: TensorType["b", "s", "d"], *attn_args, **attn_kwargs):
@@ -102,8 +225,9 @@ class AdapterWrapper(Adapter):
         downsample_factor: int = 4,
         activation: nn.Module = nn.ReLU,
         add_layernorm: bool = False,
+        device: str = None
     ):
-        super().__init__(dim, downsample_factor, activation, add_layernorm)
+        super().__init__(dim, downsample_factor, activation, add_layernorm, device)
         self.attn_block = attn_block
 
     def forward(self, x: TensorType["b", "s", "d"], *attn_args, **attn_kwargs):

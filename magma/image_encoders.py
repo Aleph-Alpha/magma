@@ -4,8 +4,14 @@ from typing import Callable, Union
 from torchtyping import patch_typeguard
 from einops import rearrange
 import timm
+from activations.torch import Rational
 import clip
+from clip.model import Bottleneck
+import copy
+
 from functools import partial
+from activations.utils.convert_network import convert_pytorch_model_to_rational
+import os
 
 # ----------------------------- Utils --------------------------------------
 
@@ -29,7 +35,7 @@ class Lambda(torch.nn.Module):
 
 
 def nfresnet50(
-    device: Union[torch.device, str] = None, pretrained: bool = True
+    device: Union[torch.device, str] = None, pretrained: bool = True, convert_to_rational: bool = False
 ) -> nn.Module:
     """
     Loads nfresnet50 model, removing the pooling layer and replacing it with
@@ -42,11 +48,13 @@ def nfresnet50(
     encoder = torch.nn.Sequential(encoder, pooling)
     if device is not None:
         encoder = encoder.to(device)
+    if convert_to_rational:
+        encoder = convert_pytorch_model_to_rational(encoder)
     return encoder
 
 
 def clip_encoder(
-    device: Union[torch.device, str] = None, name: str = "clip",
+    device: Union[torch.device, str] = None, name: str = "clip", convert_to_rational: bool = False, approx_func: str = 'relu'
 ) -> nn.Module:
     """
     Loads clip's image encoder module, discarding the lm component.
@@ -73,19 +81,40 @@ def clip_encoder(
             partial(rearrange, pattern="b d h w -> b (h w) d")
         )  # remove attn pooling, just use reshaped features
 
+    if convert_to_rational:
+        encoder = convert_pytorch_model_to_rational(
+            encoder, rational_cuda=device, approx_func="rational:relu", submodule_class=Bottleneck)
     return encoder
 
 
+def new_forward(self, x):
+    identity = x
+
+    out = self.relu1(self.bn1(self.conv1(x)))
+    out = self.relu2(self.bn2(self.conv2(out)))
+    out = self.avgpool(out)
+    out = self.bn3(self.conv3(out))
+
+    if self.downsample is not None:
+        identity = self.downsample(x)
+
+    out += identity
+    out = self.relu3(out)
+    return out
+
+
 def get_image_encoder(
-    name: str, device: Union[torch.device, str] = None, pretrained: bool = False
+    name: str, device: Union[torch.device, str] = None, pretrained: bool = False, convert_to_rational: bool = False
 ) -> torch.nn.Module:
     """
     Loads image encoder module
     """
     if name == "nfresnet50":
-        encoder = nfresnet50(device=device, pretrained=pretrained)
+        encoder = nfresnet50(device=device, pretrained=pretrained,
+                             convert_to_rational=convert_to_rational)
     elif "clip" in name:
-        encoder = clip_encoder(device=device, name=name)
+        encoder = clip_encoder(device=device, name=name,
+                               convert_to_rational=convert_to_rational)
     else:
         raise ValueError(f"image encoder {name} not recognized")
     return encoder

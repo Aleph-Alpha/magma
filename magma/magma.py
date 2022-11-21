@@ -8,6 +8,7 @@ from torchtyping import TensorType
 from transformers.file_utils import ModelOutput
 from magma.config import MultimodalConfig
 
+
 from magma.utils import get_tokenizer
 from .language_model import get_gptj
 from .adapters import (
@@ -21,12 +22,18 @@ from .sampling import generate
 from .utils import build_labels, is_url, print_main, download_checkpoint
 from .image_input import ImageInput
 from .transforms import get_transforms
-
+import os
 # ------------------------- Magma main class ----------------------------------
 
 
+local_rank = int(os.getenv('LOCAL_RANK', None))
+DEVICE = torch.device(
+    f"cuda:{local_rank}" if local_rank != None else "cpu"
+)
+
+
 class Magma(nn.Module):
-    def __init__(self, config, device=None):
+    def __init__(self, config):
         super().__init__()
 
         if isinstance(config, (str, Path)):
@@ -35,37 +42,37 @@ class Magma(nn.Module):
             )  # load config from yml file if config is a string
         else:
             assert isinstance(config, MultimodalConfig)
-
-        self.device = device or torch.device(
-            "cuda" if torch.cuda.is_available() else "cpu"
-        )
         self.config = config
-        self.lm = get_gptj() #.to(self.device)
+
+        self.lm = get_gptj()  # .to(self.device)
         self.seq_len = self.lm.config.max_position_embeddings
 
-        self.tokenizer = get_tokenizer("gpt2", sequence_length=self.seq_len)
+        self.tokenizer = get_tokenizer(
+            "gpt2", sequence_length=self.seq_len)
 
         self.image_token = self.tokenizer.cls_token_id
         self.eos_token = self.tokenizer.eos_token_id
         self.lm.resize_token_embeddings(len(self.tokenizer))
         self.lm.config.pad_token_id = self.tokenizer.eos_token_id
-        self.word_embedding = self.lm.transformer.wte #.to(device)
+        self.word_embedding = self.lm.transformer.wte  # .to(device)
         self.transformer = self.lm.transformer.h
 
         # adapter settings
         self.mlp_adapter_added, self.attn_adapter_added = False, False
-
         self.image_prefix = ImagePrefix(
             config=config,
+            # out_dim=4096,
             out_dim=self.lm.config.hidden_size,
-        ) #.to(self.device)
+            device=DEVICE
+        )  # .to(self.device)
 
         # might change based on the type of image encoder, so get from prefix instead of config
         self.image_prefix_seq_len = self.image_prefix.out_seq_len
-
+        # print(self.image_prefix.enc.input_resolution)
         self.transforms = get_transforms(
             config.image_size,
             config.encoder_name,
+            # input_resolution=384,
             input_resolution=self.image_prefix.enc.input_resolution,
         )
 
@@ -77,10 +84,12 @@ class Magma(nn.Module):
                 self.add_adapters(
                     location="mlp",
                     adapter_type=mlp_config.pop("adapter_type"),
-                    downsample_factor=mlp_config.pop("downsample_factor", 4),
+                    downsample_factor=mlp_config.pop(
+                        "downsample_factor", 4),
                     **mlp_config,
                 )
-            attn_config = deepcopy(config.adapter_config.get("attention", None))
+            attn_config = deepcopy(
+                config.adapter_config.get("attention", None))
             if attn_config:
                 assert attn_config.get("adapter_type") is not None
                 self.add_adapters(
@@ -92,7 +101,7 @@ class Magma(nn.Module):
         # freeze parameters
         if config.freeze_lm:
             for name, param in self.lm.named_parameters():  # freeze lm weights
-                if config.adapter_config and "adapter" in name:
+                if config.adapter_config and "adapter" in name and not config.adapter_config.get('freeze', False):
                     param.requires_grad = True
 
         if config.freeze_img_encoder:
@@ -102,10 +111,12 @@ class Magma(nn.Module):
     def add_adapters(
         self,
         downsample_factor: int = 4,
-        adapter_type: Literal["normal", "parallel", "scaled_parallel"] = "normal",
+        adapter_type: Literal["normal", "parallel",
+                              "scaled_parallel"] = "normal",
         location: Literal["mlp", "attention"] = "mlp",
         ff_attr: str = "mlp",
         attn_attr: str = "attn",
+
         **adapter_kwargs,
     ):
         """
@@ -132,12 +143,20 @@ class Magma(nn.Module):
                         dim=self.lm.config.hidden_size,
                         downsample_factor=downsample_factor,
                         scaled=adapter_type == "scaled_parallel",
+                        hidden_act=self.config.adapter_config.get(
+                            'hidden_act', False),
+                        adapter_switch=self.config.adapter_config.get(
+                            'adapter_switch', False),
                         **adapter_kwargs,
                     )
                 else:
                     adpt = Adapter(
                         dim=self.lm.config.hidden_size,
                         downsample_factor=downsample_factor,
+                        hidden_act=self.config.adapter_config.get(
+                            'hidden_act', False),
+                        adapter_switch=self.config.adapter_config.get(
+                            'adapter_switch', False),
                         **adapter_kwargs,
                     )
                     adapter_layer = nn.Sequential(
@@ -173,7 +192,7 @@ class Magma(nn.Module):
         else:
             self.attn_adapter_added = True
 
-    def preprocess_inputs(self, input_list: list, embed = True) -> List[torch.Tensor]:
+    def preprocess_inputs(self, input_list: list, embed=True) -> List[torch.Tensor]:
         """
         Expects a list of strings and instances of ImageInput
         Converts them into a list of tensors and then optionally runs self.embed over it
@@ -183,7 +202,8 @@ class Magma(nn.Module):
             if isinstance(inp, str):
                 input_list[i] = self.tokenizer.encode(inp, return_tensors="pt")
             elif isinstance(inp, ImageInput):
-                input_list[i] = inp.get_transformed_image(transform_fn = self.transforms)
+                input_list[i] = inp.get_transformed_image(
+                    transform_fn=self.transforms)
             else:
                 raise Exception(f'Invalid input type:{type(inp)}')
 
@@ -201,10 +221,10 @@ class Magma(nn.Module):
         emb_list = []
         for x in inputs:
             if x.ndim == 2:
-                x = x.to(self.device)
+                x = x.to(DEVICE)
                 emb_list.append(self.word_embedding(x))
             elif x.ndim == 4:
-                x = x.to(self.device).half()
+                x = x.to(DEVICE).half()
                 image_embeddings = self.image_prefix(x)
                 emb_list.append(image_embeddings)
             else:
@@ -242,6 +262,7 @@ class Magma(nn.Module):
         output_hidden_states: bool = False,
         input_embeddings: TensorType["b", "s", "d"] = None,
     ) -> ModelOutput:
+
         assert captions is not None, "Must provide captions in training"
         assert any([i is not None for i in [images, input_embeddings]]) and not all(
             [i is not None for i in [images, input_embeddings]]
@@ -252,11 +273,11 @@ class Magma(nn.Module):
 
         if input_embeddings is None:
             input_embeddings = self.image_prefix(images)
+
         labels = build_labels(
-            input_embeddings, captions, self.eos_token, self.device
+            input_embeddings, captions, self.eos_token
         )  # build labels from input_embeddings
         word_embeddings = self.word_embedding(captions)
-
         # join together
         input_embeddings = torch.cat(
             (
@@ -276,20 +297,21 @@ class Magma(nn.Module):
         return lm_outputs
 
     @classmethod
-    def from_checkpoint(cls, config_path, checkpoint_path, device = 'cpu'):
+    def from_checkpoint(cls, config_path, checkpoint_path, device="cpu"):
         """
         Loads a model checkpoint from disk / downloads from url if not present
         """
 
         checkpoint_url = 'https://bit.ly/aleph-alpha-magma-download'
 
-        if exists(checkpoint_path) ==  False:
-            print_main(f'checkpoint: {checkpoint_path} does not exist, downloading model')
-            download_checkpoint(checkpoint_url = checkpoint_url, save_as = checkpoint_path)
+        if exists(checkpoint_path) == False:
+            print_main(
+                f'checkpoint: {checkpoint_path} does not exist, downloading model')
+            download_checkpoint(checkpoint_url=checkpoint_url,
+                                save_as=checkpoint_path)
 
-        model = cls(config = config_path)
-
-        sd = torch.load(checkpoint_path, map_location=torch.device("cpu"))
+        model = cls(config=config_path)
+        sd = torch.load(checkpoint_path, map_location=torch.device(device))
         if "module" in sd.keys():
             sd = sd["module"]
 
@@ -297,5 +319,5 @@ class Magma(nn.Module):
         model.load_state_dict(sd, strict=False)
         print_main("magma successfully loaded")
 
-        model.half().to(device).eval()
+        model.half()  # .eval()  # .to(device).eval()
         return model

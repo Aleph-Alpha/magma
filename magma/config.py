@@ -25,6 +25,7 @@ class MultimodalConfig:
 
     batch_size: int
     train_steps: int
+    train_micro_batch_size_per_gpu: int
     optimizer_name: str = "AdamW"
     lr: float = 8.0e-4
     image_enc_lr: float = None
@@ -41,6 +42,7 @@ class MultimodalConfig:
     run_blind: bool = False
     fine_tune: bool = False
     load_optimizer: bool = True
+    rational_image_encoder: bool = False
 
     # Checkpointing:
     # ------------------------------------------------------------
@@ -61,6 +63,7 @@ class MultimodalConfig:
     encoder_name: str = "clip"
     tokenizer_name: str = "gpt2"
     lm_name: str = "EleutherAI/gpt-j-6B"
+    from_checkpoint: bool = False
     image_seq_len: int = 2
     pretrained_img_encoder: bool = False
     seq_len: int = None
@@ -79,7 +82,8 @@ class MultimodalConfig:
 
     # Classification Finetuning settings:
     # ------------------------------------------------------------
-    class_dict: dict = None  # {num_classes: .., ckpt_path: .., classifier_type:, .., interface_type: .., interface_position: .., freeze_model: ..}
+    # {num_classes: .., ckpt_path: .., classifier_type:, .., interface_type: .., interface_position: .., freeze_model: ..}
+    class_dict: dict = None
 
     # Logging settings:
     # ------------------------------------------------------------
@@ -122,15 +126,21 @@ class MultimodalConfig:
                 },
             }
         self.deepspeed_config_params = {
-            "train_batch_size": self.batch_size,
+            # "train_batch_size": self.batch_size,
+            "train_micro_batch_size_per_gpu": self.train_micro_batch_size_per_gpu,
             "gradient_accumulation_steps": self.gradient_accumulation_steps,
             "gradient_clipping": self.gradient_clipping,
             "fp16": {"enabled": True, "loss_scale_window": 250},
             "scheduler": self.scheduler_dict,
             "zero_optimization": {
                 "stage": self.zero_stage,
+                "offload_optimizer": {
+                    "device": 'cpu'
+                },
                 "load_from_fp32_weights": False,
+                # "reduce_bucket_size": 2e8
             },
+            'amp_enabled': True
         }
 
         if self.name is None:

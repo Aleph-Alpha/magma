@@ -10,6 +10,13 @@ import torch
 from collections import defaultdict
 from torchtyping import TensorType
 import gdown
+import os
+
+
+local_rank = int(os.getenv('LOCAL_RANK', None))
+DEVICE = torch.device(
+    f"cuda:{local_rank}" if local_rank != None else "cpu"
+)
 
 
 def is_main():
@@ -62,6 +69,9 @@ def parse_args():
     parser = argparse.ArgumentParser()
     parser.add_argument(
         "--config", type=str, required=False, help="path to your training config"
+    )
+    parser.add_argument(
+        "--from_pretrained", type=str, required=False, help="path to your training config"
     )
     parser.add_argument(
         "--local_rank",
@@ -321,9 +331,11 @@ def to_cuda_half(*args):
             cuda_half_args.append(x_cuda_half)
         else:
             if x.dtype in [torch.float32, torch.float16]:
-                cuda_half_args.append(x.cuda().half())
+                # cuda_half_args.append(x.half())
+                cuda_half_args.append(x.to(DEVICE).half())
             elif x.dtype == torch.long:
-                cuda_half_args.append(x.cuda())
+                # cuda_half_args.append(x)
+                cuda_half_args.append(x.to(DEVICE).cuda())
 
     if len(cuda_half_args) == 1:
         return cuda_half_args[0]
@@ -335,7 +347,6 @@ def build_labels(
     input_embeddings: TensorType["b", "s", "d"],
     captions: TensorType["b", "s"],
     eos_token,
-    device,
 ) -> TensorType["b", "s"]:
     """
     Builds labels from input embeddings.
@@ -347,9 +358,9 @@ def build_labels(
     shape = input_embeddings.shape[:2]  # b, s
 
     assert captions.shape[1] >= shape[1]
-
     # make sure to add masked embedding tokens in the appropriate locations in the labels
-    embedding_tokens = torch.zeros(shape, dtype=torch.int64).to(device) - 100
+    embedding_tokens = torch.zeros(
+        shape, dtype=torch.int64).to(DEVICE) - 100
     labels = torch.cat(
         (embedding_tokens, captions[:, : -shape[1]]), dim=1
     )  # we truncate the sequence length of the captions, as they are always padded to the full sequence length
@@ -358,7 +369,7 @@ def build_labels(
     for label in labels:
         for k, token in enumerate(label):
             if token == eos_token:
-                label[k + 1 :] = -100
+                label[k + 1:] = -100
                 break
 
     return labels
@@ -367,6 +378,7 @@ def build_labels(
 def is_url(string):
     return string.startswith("http://") or string.startswith("https://")
 
+
 def download_checkpoint(checkpoint_url, save_as):
-    
-    gdown.download(url = checkpoint_url, output = save_as, quiet=False)
+
+    gdown.download(url=checkpoint_url, output=save_as, quiet=False)

@@ -4,7 +4,7 @@ from torchtyping import TensorType
 from einops import rearrange
 from .image_encoders import get_image_encoder
 from .config import MultimodalConfig
-
+import os
 # ------------------------- Image prefix ----------------------------------
 
 # for models that are fixed to a specific sequence lengths (i.e clip models with no pooling), the sequence lengths are below
@@ -22,7 +22,6 @@ ENCODER_OUT_DIMS = {
 
 
 class ImagePrefix(nn.Module):
-
     """
     Takes in a batch of images and returns a batch of embeddings of the
     same dimensions as the LM's word embeddings.
@@ -49,6 +48,8 @@ class ImagePrefix(nn.Module):
         self.enc = get_image_encoder(
             config.encoder_name,
             pretrained=config.pretrained_img_encoder,
+            convert_to_rational=config.rational_image_encoder, 
+            device=device
         )
         self.encoder_out_dim = ENCODER_OUT_DIMS[
             self.encoder_type
@@ -78,7 +79,6 @@ class ImagePrefix(nn.Module):
     def forward(
         self, x: TensorType["b", "c", "h", "w"]
     ) -> TensorType["b", "seq", "out_dim"]:
-
         # pass through image encoder
         logits = self.enc(x)
 
