@@ -5,6 +5,8 @@ import torch.nn as nn
 from copy import deepcopy
 from typing import Literal, Optional, List
 from torchtyping import TensorType
+from torch.nn.modules.container import ModuleList, Sequential
+from torch.nn.parameter import Parameter
 from transformers.file_utils import ModelOutput
 from magma.config import MultimodalConfig
 
@@ -40,7 +42,7 @@ class Magma(nn.Module):
             "cuda" if torch.cuda.is_available() else "cpu"
         )
         self.config = config
-        self.lm = get_gptj() #.to(self.device)
+        self.lm = get_gptj(config) #.to(self.device)
         self.seq_len = self.lm.config.max_position_embeddings
 
         self.tokenizer = get_tokenizer("gpt2", sequence_length=self.seq_len)
@@ -88,6 +90,21 @@ class Magma(nn.Module):
                     adapter_type=attn_config.pop("adapter_type"),
                     **attn_config,
                 )
+
+        #check weights contiguous
+        for name, param in self.named_parameters():
+            if param.is_contiguous() is False:
+                path, param = name.rsplit(".",1)
+                path = path.split('.')
+                ref = self
+                while path:
+                    element, path = path[0], path[1:]
+                    if type(ref) in {Sequential, ModuleList}:
+                        ref = ref[int(element)]
+                    else:
+                        ref = getattr(ref, element)
+                setattr(ref, param, Parameter(getattr(ref, param).contiguous()))
+                # print(name, getattr(ref, param).is_contiguous())
 
         # freeze parameters
         if config.freeze_lm:

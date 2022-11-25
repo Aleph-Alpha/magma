@@ -46,7 +46,7 @@ def get_tokenizer(name="gpt2", sequence_length=2048):
     """
     if name == "gpt2":
         tokenizer = GPT2TokenizerFast.from_pretrained("gpt2")
-        tokenizer.pad_token_id = tokenizer.eos_token
+        tokenizer.pad_token_id = tokenizer.eos_token_id
         tokenizer.padding_side = "right"
         tokenizer.model_max_length = sequence_length
         # setup lm settings
