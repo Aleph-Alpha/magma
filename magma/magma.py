@@ -241,7 +241,26 @@ class Magma(nn.Module):
         captions: Optional[TensorType["b", "seq"]] = None,
         output_hidden_states: bool = False,
         input_embeddings: TensorType["b", "s", "d"] = None,
+        inference = False
     ) -> ModelOutput:
+        if inference is True:
+            input_embeddings = self.image_prefix(images)
+            asks = [self.tokenizer.encode('Describe the painting:')] * len(images)
+            word_embeddings = self.word_embedding(torch.LongTensor(asks).to(self.device))
+            input_embeddings = torch.cat(
+                (
+                    input_embeddings,
+                    word_embeddings[:, : -input_embeddings.shape[1], :],
+                ),  # remove padding in the word embedding before concatenating
+                dim=1,
+            )
+            return self.generate(
+                embeddings = input_embeddings,
+                max_steps = 6,
+                temperature = 0.7,
+                top_k = 0,
+            )
+
         assert captions is not None, "Must provide captions in training"
         assert any([i is not None for i in [images, input_embeddings]]) and not all(
             [i is not None for i in [images, input_embeddings]]
