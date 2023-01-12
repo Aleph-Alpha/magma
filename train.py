@@ -1,3 +1,14 @@
+# %%
+from rtpt import RTPT
+from functools import partial
+from tqdm import tqdm
+from torch.optim import AdamW
+from pathlib import Path
+from magma.config import MultimodalConfig
+from torch.utils.data import random_split, ConcatDataset
+
+import wandb
+import deepspeed
 from magma.train_loop import (
     eval_step,
     inference_step,
@@ -13,6 +24,7 @@ from magma.utils import (
     load_model,
     print_main,
     configure_param_groups,
+    cast_dtype
 )
 from magma.magma import (
     Magma,
@@ -24,16 +36,15 @@ from magma.datasets import (
 import torch
 import torch.nn as nn
 import os
+# os.environ["CUDA_DEVICE_ORDER"] = "PCI_BUS_ID"
+# os.environ["CUDA_VISIBLE_DEVICES"] = "5"
+# os.environ['MASTER_ADDR'] = 'localhost'
+# # modify if RuntimeError: Address already in use
+# os.environ['MASTER_PORT'] = '9994'
+# os.environ['RANK'] = "0"
+# os.environ['LOCAL_RANK'] = "0"
+# os.environ['WORLD_SIZE'] = "1"
 
-import deepspeed
-import wandb
-from torch.utils.data import random_split, ConcatDataset
-from magma.config import MultimodalConfig
-from pathlib import Path
-from torch.optim import AdamW
-from tqdm import tqdm
-from functools import partial
-from rtpt import RTPT
 rtpt = RTPT(name_initials='MM',
             experiment_name='Debugging OOMem Issues in Deepspeed. Do not Enter if you want your process to live :)', max_iterations=300)
 rtpt.start()
@@ -89,6 +100,9 @@ if __name__ == "__main__":
         config = MultimodalConfig.from_yml(
             args.config
         )
+    if config.dtype:
+        dtype = cast_dtype(config.dtype)
+        torch.set_default_dtype(dtype)
 
     if config.from_checkpoint:
         print("FROM CHECKPOINT")
@@ -163,7 +177,7 @@ if __name__ == "__main__":
         name=config.name or wandb.util.generate_id(),
         config=config,
     )
-
+# %%
     # training loop
     for i in pbar:
         rtpt.step()
@@ -192,7 +206,7 @@ if __name__ == "__main__":
             for name, param in model.named_parameters():
                 if name == 'lm.transformer.h.0.mlp.1.switch_logits':
                     switch = param[0].item()
-                if "switch_logits" in name: 
+                if "switch_logits" in name:
                     last_switch = param[0].item()
                 # if name == 'image_prefix.enc.layer1.0.relu1.numerator':
                 #     relu = param[0].item()
@@ -200,7 +214,7 @@ if __name__ == "__main__":
             # print('switch', switch)
             # print('relu', relu)
             to_log = {"train/loss": loss, "train/lr": current_lr,
-                      'first_Switch_logit': switch,'last_Switch': last_switch }
+                      'first_Switch_logit': switch, 'last_Switch': last_switch}
             # to_log = {"train/loss": loss, "train/lr": current_lr,
             #           'first_Switch_logit': switch, 'first_relu_weight_image_encoder': relu}
             wandb_log(to_log, step=global_step)

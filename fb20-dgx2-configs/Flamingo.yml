@@ -2,14 +2,15 @@
     name: Switch_Rational_Relu,
     #  magma settings
     from_checkpoint: False, 
-    dtype: float16,
-    # perceiver: True,
+    perceiver: True,
 
     
     # image encoder settings
-    encoder_name: 'clip_resnet_large',
+    encoder_name: 'clip_RN50',
     freeze_img_encoder: True,
     rational_image_encoder: False,
+
+    cross_attention_config:{"cadence": 2, "n_latents":64},
 
     # adapter settings
     # adapter_config: {"mlp": {"adapter_type": "normal", "downsample_factor": 4}, "adapter_switch": True, "hidden_act": "rational:relu" },
@@ -21,11 +22,11 @@
     lr: 8.0e-4,
     min_lr: 0.0,
     lr_decay_iters: 300000,
-    image_enc_lr: 2.0e-6,
+    # image_enc_lr: 2.0e-6,
     use_image_embed_layernorm: true,
     image_embed_dropout_prob: 0.1, 
     image_size: 384,
-    train_micro_batch_size_per_gpu: 1,
+    train_micro_batch_size_per_gpu: 4,
     
     gradient_accumulation_steps: 1,
     zero_stage: 2,

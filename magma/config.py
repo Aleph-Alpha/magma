@@ -67,6 +67,12 @@ class MultimodalConfig:
     image_seq_len: int = 2
     pretrained_img_encoder: bool = False
     seq_len: int = None
+    perceiver: bool = False
+    dtype: str = "float32"
+
+    # Layer Freezing settings:
+    # ------------------------------------------------------------
+    cross_attention_config: dict = None
 
     # Layer Freezing settings:
     # ------------------------------------------------------------
@@ -127,6 +133,7 @@ class MultimodalConfig:
             }
         self.deepspeed_config_params = {
             "train_batch_size": self.batch_size,
+            # "train_micro_batch_size_per_gpu": self.train_micro_batch_size_per_gpu,
             "gradient_accumulation_steps": self.gradient_accumulation_steps,
             "gradient_clipping": self.gradient_clipping,
             "fp16": {"enabled": True, "loss_scale_window": 250},
@@ -134,6 +141,11 @@ class MultimodalConfig:
             "zero_optimization": {
                 "stage": self.zero_stage,
                 "load_from_fp32_weights": False,
+                "offload_optimizer": {
+                    "device": "cpu",
+                },
+                "contiguous_gradients": True,
+                "overlap_comm": True
             },
 
         }

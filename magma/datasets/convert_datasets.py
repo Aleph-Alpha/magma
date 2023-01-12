@@ -111,7 +111,8 @@ def convert_dataset(
         if ((k + 1) % dir_size == 0) or (k == len(ds_iterator) - 1):
             os.makedirs(save_data_dir, exist_ok=True)
             save_to_jsons(
-                img_data_list, save_data_dir, starting_idx=max(k + 1 - dir_size, 0)
+                img_data_list, save_data_dir, starting_idx=max(
+                    k + 1 - dir_size, 0)
             )
             # empty path and data lists and update save directories for next saving step
             img_data_list = []

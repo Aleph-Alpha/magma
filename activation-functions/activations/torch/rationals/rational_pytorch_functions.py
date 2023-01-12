@@ -1,4 +1,5 @@
 import torch
+from einops import rearrange
 
 
 def _get_xps(z, len_numerator, len_denominator):
@@ -10,19 +11,53 @@ def _get_xps(z, len_numerator, len_denominator):
     return torch.stack(xps, 1)
 
 
-def Rational_PYTORCH_A_F(x, weight_numerator, weight_denominator, training):
+def Rational_PYTORCH_A_F(x, weight_numerator, weight_denominator, device, pre, post):
     # P(X) / Q(X) = a_0 + a_1 * X + ... + a_n * X^n /
     #               1 + | b_1 * X | + | b_2 * X^2| + ... + | b_m * X ^m|
 
-    z = x.view(-1)
     len_num, len_deno = len(weight_numerator), len(weight_denominator)
-    # xps = torch.vander(z, max(len_num, len_deno), increasing=True)
-    xps = _get_xps(z, len_num, len_deno)
-    numerator = xps.mul(weight_numerator).sum(1)
-    expanded_dw = torch.cat([torch.tensor([1.]), weight_denominator, \
-                             torch.zeros(len_num - len_deno - 1)])
-    denominator = xps.mul(expanded_dw).abs().sum(1)
-    return numerator.div(denominator).view(x.shape)
+
+    z = x.view(-1)
+    # print("Before Vander", torch.equal(x, x_old))
+    xps = torch.vander(z, N=max(len_num, len_deno), increasing=True)
+    xps = torch.nan_to_num(xps, posinf=1/1024, neginf=-1/1024)
+
+    # print(xps.isnan().any())
+    # print('xps', torch.isinf(xps).any())
+
+    # xps = _get_xps(z, len_num, len_deno)
+
+    # print(f'{xps.device} {xps.dtype} {weight_numerator.device} {weight_numerator.dtype}')
+    numerator_mul = xps.mul(weight_numerator)
+    # print('num')
+    # print(numerator_mul.isnan().any())
+    # print(numerator_mul)
+    # print('numerator_mul', torch.isinf(numerator_mul).any())
+    # if torch.isinf(numerator_mul).any():
+
+    numerator = numerator_mul.sum(-1)
+    # numerator = torch.nan_to_num(numerator, posinf=fp16_max, neginf=-fp16_max)
+
+    expanded_dw = torch.cat([pre, weight_denominator, post])
+    denominator = xps.mul(expanded_dw)
+    # print('denominator', torch.isinf(denominator).any())
+    # print('denom')
+    # print(denominator.isnan().any())
+    denominator_ab = denominator.abs()
+    denomi_sum = denominator_ab.sum(-1)
+    # denomi_sum = torch.nan_to_num(
+    #     denomi_sum, posinf=fp16_max, neginf=-fp16_max)
+
+    out = numerator.div(denomi_sum)
+
+    # print("OUt Vander x == x_old", torch.equal(x, x_old))
+
+    new_out = out.view(x.shape)
+    # new_out = rearrange(out, "(h1 h2 h3 h4) -> h1 h2 h3 h4",
+    #                     h1=x.shape[0], h2=x.shape[1], h3=x.shape[2], h4=x.shape[3])
+    # print('out')
+    # print(new_out)
+    return new_out
 
 
 def Rational_PYTORCH_B_F(x, weight_numerator, weight_denominator, training):
@@ -62,7 +97,7 @@ def Rational_PYTORCH_D_F(x, weight_numerator, weight_denominator, training, rand
     numerator = xps.mul(weight_numerator.mul(
         torch.FloatTensor(len_num).uniform_(1-random_deviation,
                                             1+random_deviation))
-                       ).sum(1)
+                        ).sum(1)
     denominator = xps[:, 1:len_deno+1].mul(weight_denominator).sum(1).abs()
     return numerator.div(1 + denominator).view(x.shape)
 
@@ -96,7 +131,8 @@ def Rational_Spline_F(x, k, weight_numerator, weight_denominator, training):
     z = x.view(-1)
     len_num, len_deno = len(weight_numerator), len(weight_denominator)
     xps = _get_xps(z, len_num, len_deno).to(weight_numerator.device)
-    numerator = (xps[:, :len_num].mul(weight_numerator).sum(1)).mul(torch.relu(z+k)).mul(-torch.relu(-z+k))
+    numerator = (xps[:, :len_num].mul(weight_numerator).sum(1)
+                 ).mul(torch.relu(z+k)).mul(-torch.relu(-z+k))
     denominator = xps[:, 1:len_deno+1].mul(weight_denominator).sum(1).abs()
     return numerator.div(1 + denominator).view(x.shape)
 
@@ -117,4 +153,5 @@ class Rational_CUDA_NONSAFE_F():
         pass
 
     def apply():
+
         return Rational_NONSAFE_F

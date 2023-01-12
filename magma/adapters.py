@@ -2,14 +2,10 @@ import torch
 import torch.nn as nn
 from torchtyping import TensorType
 from activations.torch import Rational
-
+from activations.utils.convert_network import convert_pytorch_model_to_rational
+from .utils import get_world_info
 import os
 import math
-
-local_rank = int(os.getenv('LOCAL_RANK', None))
-DEVICE = torch.device(
-    f"cuda:{local_rank}" if local_rank != None else "cpu"
-)
 
 
 class Activation_Function_Class(nn.Module):
@@ -19,7 +15,7 @@ class Activation_Function_Class(nn.Module):
 
     def __init__(self, hidden_act):
         super().__init__()
-
+        local_rank, rank, world_size = get_world_info()
         if hidden_act.lower() == "relu":
             self.f = nn.functional.relu
         elif hidden_act.lower() == "tanh":
@@ -55,7 +51,7 @@ class Activation_Function_Class(nn.Module):
         elif hidden_act.lower().startswith('rational:'):
             func_name = hidden_act.lower().split(':', 1)[1]
             self.f = Rational(
-                cuda=DEVICE, trainable=True, train_numerator=True,
+                cuda=f'cuda:{local_rank}', trainable=True, train_numerator=True,
                 train_denominator=True, version="A", approx_func=func_name
             )
 
@@ -104,21 +100,28 @@ class Adapter(nn.Module):
         layers.extend(
             [
                 nn.Linear(dim, dim // downsample_factor),
+                # nn.ReLU(),
                 Activation_Function_Class(hidden_act),
                 nn.Linear(dim // downsample_factor, dim),
             ]
         )
+        local_rank, rank, world_size = get_world_info()
+        self.local_rank = local_rank
         self.adapter_switch = adapter_switch
+        device = f'cuda:{local_rank}'
+        self.device = device
         if adapter_switch:
-            self.register_parameter(
-                'switch_logits', nn.Parameter(torch.tensor(initial_logits))
-            )
-
-            self.switch_temperature = torch.tensor(
-                [initial_temperature]).to(DEVICE)
-            self.gumbel = torch.distributions.Gumbel(0, 1)
+            self.switch_logits = nn.Parameter(torch.tensor(
+                initial_logits).to(f'cuda:{local_rank}'))
+            self.switch_temp = nn.Parameter(torch.tensor(
+                initial_temperature).to(device))
+            self.register_parameter("switch_logits", self.switch_logits)
+            self.register_parameter("switch_temp", self.switch_temp)
+            self.gumbel = torch.distributions.Gumbel(torch.tensor(
+                0.).to(device), torch.tensor(1.).to(device))
             self.fixed_idx = fixed_idx
-        self.adapter = nn.Sequential(*layers)
+        self.adapter = nn.Sequential(*layers).to(device)
+        self.adapter = convert_pytorch_model_to_rational(self.adapter)
         self.adapter.apply(self.init_weights)
 
     def init_weights(self, m: nn.Module, std=1e-3):
@@ -144,21 +147,23 @@ class Adapter(nn.Module):
     def forward(self, x: TensorType["b", "s", "d"]) -> TensorType["b", "s", "d"]:
         if self.adapter_switch:
             output = self.adapter(x)
+
             stacked = torch.stack((output, x), dim=2)
 
             batch_size, sequence_length, num_classes, hidden_dim_size = stacked.size()
             if not self.training:
                 return x[:, :, self.fixed_idx, :]
             sample_size = [batch_size, num_classes]
-
-            g = self.gumbel.sample(sample_size).to(DEVICE)
+            g = self.gumbel.sample(sample_size).to(
+                device=self.device)
 
             weights = torch.softmax(
-                (g + self.switch_logits)/self.switch_temperature, dim=1).half()
+                (g + self.switch_logits)/self.switch_temp, dim=1)  # .half()
 
             y = torch.einsum('bsnd, bn -> bsd', stacked, weights)
 
             return y
+
         return self.adapter(x) + x
 
 
@@ -202,7 +207,7 @@ class ParallelAdapterWrapper(ParallelAdapter):
         activation: nn.Module = nn.ReLU
     ):
         super().__init__(
-            module, dim, downsample_factor, scaled, add_layernorm, activation, device
+            module, dim, downsample_factor, scaled, add_layernorm, activation
         )
 
     def forward(self, x: TensorType["b", "s", "d"], *attn_args, **attn_kwargs):
@@ -225,9 +230,9 @@ class AdapterWrapper(Adapter):
         downsample_factor: int = 4,
         activation: nn.Module = nn.ReLU,
         add_layernorm: bool = False,
-        device: str = None
+
     ):
-        super().__init__(dim, downsample_factor, activation, add_layernorm, device)
+        super().__init__(dim, downsample_factor, activation, add_layernorm)
         self.attn_block = attn_block
 
     def forward(self, x: TensorType["b", "s", "d"], *attn_args, **attn_kwargs):

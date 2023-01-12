@@ -3,6 +3,7 @@ import torch.nn as nn
 from torchtyping import TensorType
 from einops import rearrange
 from .image_encoders import get_image_encoder
+from .utils import get_world_info
 from .config import MultimodalConfig
 import os
 # ------------------------- Image prefix ----------------------------------
@@ -11,10 +12,12 @@ import os
 ENCODER_SEQ_LENS = {
     "clip_resnet": 49,
     "clip_resnet_large": 144,
+    'clip_RN50': 49
 }
 
 ENCODER_OUT_DIMS = {
     "nfresnet50": 2048,
+    'clip_RN50' : 2048, 
     "clip": 512,
     "clip_resnet": 2560,
     "clip_resnet_large": 3072,
@@ -38,9 +41,9 @@ class ImagePrefix(nn.Module):
         device=None,
     ):
         super().__init__()
-        self.device = device or torch.device(
-            "cuda" if torch.cuda.is_available() else "cpu"
-        )
+        local_rank, rank, world_size = get_world_info()
+
+        self.device = f'cuda:{local_rank}'
         self.config = config
         self.encoder_type = config.encoder_name
 
@@ -48,8 +51,8 @@ class ImagePrefix(nn.Module):
         self.enc = get_image_encoder(
             config.encoder_name,
             pretrained=config.pretrained_img_encoder,
-            convert_to_rational=config.rational_image_encoder, 
-            device=device
+            convert_to_rational=config.rational_image_encoder,
+            device=self.device
         )
         self.encoder_out_dim = ENCODER_OUT_DIMS[
             self.encoder_type
@@ -80,8 +83,10 @@ class ImagePrefix(nn.Module):
         self, x: TensorType["b", "c", "h", "w"]
     ) -> TensorType["b", "seq", "out_dim"]:
         # pass through image encoder
-        logits = self.enc(x)
 
+        logits = self.enc(x)
+        if self.config.cross_attention_config: 
+            return logits
         # remove trailing dimensions of size 1 + pass through linear
         if logits.ndim == 4:
             logits = rearrange(logits, "b d 1 1 -> b d")

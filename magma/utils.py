@@ -12,11 +12,11 @@ from torchtyping import TensorType
 import gdown
 import os
 
-
-local_rank = int(os.getenv('LOCAL_RANK', None))
-DEVICE = torch.device(
-    f"cuda:{local_rank}" if local_rank != None else "cpu"
-)
+TORCH_DTYPES = {
+    'float32': torch.float32,
+    'float64': torch.float64,
+    'float16': torch.float16,
+}
 
 
 def is_main():
@@ -275,7 +275,7 @@ def init_distributed(backend="nccl"):
             dist_backend=backend, verbose=True, auto_mpi_discovery=True
         )
     local_rank, rank, world_size = get_world_info()
-    torch.cuda.set_device(local_rank)
+
     return local_rank, rank, world_size
 
 
@@ -322,6 +322,7 @@ def infer_checkpoint_path_from_config(config):
 # probably not working yet
 def to_cuda_half(*args):
     cuda_half_args = []
+    local_rank, rank, world_size = get_world_info()
     for x in args:
         if isinstance(x, list):
             x_cuda_half = to_cuda_half(*x)
@@ -332,10 +333,11 @@ def to_cuda_half(*args):
         else:
             if x.dtype in [torch.float32, torch.float16]:
                 # cuda_half_args.append(x.half())
-                cuda_half_args.append(x.to(DEVICE).half())
+                cuda_half_args.append(
+                    x.to(torch.device(f'cuda:{local_rank}')).half())
             elif x.dtype == torch.long:
                 # cuda_half_args.append(x)
-                cuda_half_args.append(x.to(DEVICE).cuda())
+                cuda_half_args.append(x.cuda())
 
     if len(cuda_half_args) == 1:
         return cuda_half_args[0]
@@ -344,7 +346,7 @@ def to_cuda_half(*args):
 
 
 def build_labels(
-    input_embeddings: TensorType["b", "s", "d"],
+    input_embeddings: TensorType["b","n","t", "s", "d"],
     captions: TensorType["b", "s"],
     eos_token,
 ) -> TensorType["b", "s"]:
@@ -356,11 +358,12 @@ def build_labels(
     Additionally, masks out everything *after* the first eos token.
     """
     shape = input_embeddings.shape[:2]  # b, s
-
+    local_rank, rank, world_size = get_world_info()
+    print(shape[1])
     assert captions.shape[1] >= shape[1]
     # make sure to add masked embedding tokens in the appropriate locations in the labels
     embedding_tokens = torch.zeros(
-        shape, dtype=torch.int64).to(DEVICE) - 100
+        shape, dtype=torch.int64).to(torch.device(f'cuda:{local_rank}')) - 100
     labels = torch.cat(
         (embedding_tokens, captions[:, : -shape[1]]), dim=1
     )  # we truncate the sequence length of the captions, as they are always padded to the full sequence length
@@ -382,3 +385,11 @@ def is_url(string):
 def download_checkpoint(checkpoint_url, save_as):
 
     gdown.download(url=checkpoint_url, output=save_as, quiet=False)
+
+
+def cast_dtype(typestring):
+    try:
+        return TORCH_DTYPES[typestring]
+    except:
+        KeyError(
+            f"Invalid dtype {typestring}. Valid dtypes are {TORCH_DTYPES.keys()}")

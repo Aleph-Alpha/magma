@@ -68,7 +68,7 @@ def _load_paths(data_dir, sort=True):
     paths = []
     img_data_dir = data_dir / "image_data"
     for p in tqdm(
-        Path(img_data_dir).glob("*.json"),
+        Path(img_data_dir).glob("*/*.json"),
         desc=f"loading dataset paths from {str(data_dir)}",
     ):
         paths.append(p)
@@ -76,17 +76,21 @@ def _load_paths(data_dir, sort=True):
 
 
 class LazyLoader:
-    def __init__(self, data_dir):
+    def __init__(self, data_dir, few_shot):
+        self.few_shot = few_shot
         self.paths = _load_paths(data_dir)
 
     def __len__(self):
-        return len(self.paths)
+        return len(self.paths)//self.few_shot
 
     def __getitem__(self, idx):
-        data = load_json(self.paths[idx])
+        all_data = []
+        for i in range(self.few_shot):
+            data = load_json(self.paths[self.few_shot*idx + i])
+            all_data.append(data)
         if data is None:
             return self[random.randint(0, len(self) - 1)]
-        return data
+        return all_data
 
 
 class ImgCptDataset(Dataset):
@@ -96,28 +100,33 @@ class ImgCptDataset(Dataset):
     """
 
     def __init__(
-        self, data_dir, tokenizer, transforms, seq_len=2048, load_data_in_memory=False
+        self, data_dir, tokenizer, transforms, seq_len=2048, load_data_in_memory=False, few_shot=1
     ):
         self.data_dir = Path(data_dir)
         self.tokenizer = tokenizer
         self.transforms = transforms
         self.seq_len = seq_len
         self.load_data_in_memory = load_data_in_memory
+        self.few_shot = few_shot
         if self.load_data_in_memory:
             self.data = _read_image_data(self.data_dir)
         else:
-            self.data = LazyLoader(self.data_dir)
+            self.data = LazyLoader(self.data_dir, few_shot)
 
     def __len__(self):
-        return len(self.data)
+        return len(self.data)//self.few_shot
 
     def __getitem__(
         self, idx
     ) -> Tuple[TensorType["b", "c", "h", "w"], TensorType["b", "s"]]:
-        img_data = self.data[idx]
+        if self.load_data_in_memory: 
+            img_data = self.data[self.few_shot * idx: (self.few_shot * id) + idx]
+        else: 
+            img_data = self.data[idx]
         try:
             try:
-                img_path = self.data_dir / img_data["image_path"]
+                img_paths = [self.data_dir / img["image_path"]
+                             for img in img_data]
             except KeyError as e:
                 # if no image path is found, assume path is same as .json, but .jpg
                 if not self.load_data_in_memory:
@@ -130,16 +139,24 @@ class ImgCptDataset(Dataset):
                     )
                 else:
                     raise e
-            img = Image.open(img_path)
-            img_tensor = self.transforms(img)
-            caption = random.choice(img_data["captions"])
+            images = []
+            text = ""
+            for i, p in enumerate(img_paths):
+                img = self.transforms(Image.open(p))
+                print(img.shape)
+                images.append(img)
+                caption = random.choice(img_data[i]["captions"])
+                text += f'<|image|> {caption} '
+            
             caption_tensor = self.tokenizer.encode(
-                caption,
+                text,
                 return_tensors="pt",
                 max_length=self.seq_len,
                 padding="max_length",
                 truncation=True,
             )
+            img_tensor = torch.cat(images)
+
             return img_tensor, caption_tensor
         except (
             UnidentifiedImageError,

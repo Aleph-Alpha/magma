@@ -1,0 +1,23 @@
+Magma: 
+Adapter: True
+Image Encoder: False 
+FP32 
+Batch Size: 4
+Epochs: 20
+
+VANDER - Rationals: 
+Time: 6:24 Minutes
+
+CUDA Rationals: 
+Time: 05:41 Minutes 
+
+=> CUDA OPTIMIZED 15 % Faster 
+--------------------------------
+Adapter: True
+Image Encoder: False 
+FP32 
+Batch Size: 4
+Epochs: 20
+
+VANDER - Rationals:
+DOESNT WORK :(((
