@@ -141,9 +141,9 @@ class MultimodalConfig:
             "zero_optimization": {
                 "stage": self.zero_stage,
                 "load_from_fp32_weights": False,
-                "offload_optimizer": {
-                    "device": "cpu",
-                },
+                # "offload_optimizer": {
+                #     "device": "cpu",
+                # },
             },
 
         }
