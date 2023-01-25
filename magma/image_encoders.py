@@ -65,7 +65,7 @@ def clip_encoder(
         name = "ViT-B/32"
     elif name in ["clip_resnet", "RN50x4"]:
         name = "RN50x4"
-    elif name in ['clip_RN50']: 
+    elif name in ['clip_RN50']:
         name = 'RN50'
     elif name in ["clip_resnet_large", "RN50x16"]:
         name = "RN50x16"
@@ -85,7 +85,8 @@ def clip_encoder(
 
     if convert_to_rational:
         encoder = convert_pytorch_model_to_rational(
-            encoder, rational_cuda=device, approx_func="rational:relu", submodule_class=Bottleneck)
+            encoder, rational_cuda=device, approx_func="relu", submodule_class=Bottleneck)
+
     return encoder
 
 

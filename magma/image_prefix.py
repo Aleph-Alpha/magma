@@ -17,7 +17,7 @@ ENCODER_SEQ_LENS = {
 
 ENCODER_OUT_DIMS = {
     "nfresnet50": 2048,
-    'clip_RN50' : 2048, 
+    'clip_RN50': 2048,
     "clip": 512,
     "clip_resnet": 2560,
     "clip_resnet_large": 3072,
@@ -85,7 +85,7 @@ class ImagePrefix(nn.Module):
         # pass through image encoder
 
         logits = self.enc(x)
-        if self.config.cross_attention_config: 
+        if self.config.cross_attention_config:
             return logits
         # remove trailing dimensions of size 1 + pass through linear
         if logits.ndim == 4:

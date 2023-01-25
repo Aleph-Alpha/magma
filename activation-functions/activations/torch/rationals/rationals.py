@@ -69,7 +69,7 @@ class Rational(ActivationModule, Rational_base):
 
     def __init__(self, approx_func="leaky_relu", degrees=(5, 4), cuda=None,
                  version="A", trainable=True, train_numerator=True,
-                 train_denominator=True, name=None):
+                 train_denominator=True, name=None, dtype=torch.float32):
         if name is None:
             name = f"Rational ({approx_func} init approx)"
         ActivationModule.__init__(self, name)
@@ -78,25 +78,20 @@ class Rational(ActivationModule, Rational_base):
         if cuda is None:
             cuda = torch_cuda_available()
         if cuda is True:
-
             device = 'cuda'
         elif cuda is False:
             device = "cpu"
         else:
             device = cuda
-        print('DEVVICE', device)
+
         w_numerator, w_denominator = get_parameters(version, degrees,
                                                     approx_func)
 
-        self.numerator = nn.Parameter(torch.tensor(w_numerator).to(device),
+        self.numerator = nn.Parameter(torch.tensor(w_numerator, dtype=torch.float16),
                                       requires_grad=trainable and train_numerator)
 
-        self.denominator = nn.Parameter(torch.tensor(w_denominator).to(device),
+        self.denominator = nn.Parameter(torch.tensor(w_denominator, dtype=torch.float16),
                                         requires_grad=trainable and train_denominator)
-
-        self.pre = torch.tensor([1.]).to(device)  # .half()
-        self.post = torch.zeros(
-            len(w_numerator) - len(w_denominator) - 1).to(device)  # .half()
 
         self.register_parameter("numerator", self.numerator)
         self.register_parameter("denominator", self.denominator)
@@ -152,7 +147,7 @@ class Rational(ActivationModule, Rational_base):
 
         # return self.activation_function(x, self.numerator, self.denominator, self.training)
         y = self.activation_function(
-            x, self.numerator, self.denominator, self.device, self.pre, self.post)
+            x, self.numerator, self.denominator)
         return y
 
     def _cpu(self):

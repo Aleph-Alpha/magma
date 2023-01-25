@@ -1,7 +1,10 @@
+# Creates A Version Witch Adapter Switch and Rationals From Checkpoint
 {
-    name: Switch_Rational_Relu_Adapter_From_Checkpoint,
+    name: Switch_Rational_Relu,
     #  magma settings
     from_checkpoint: True, 
+    # dtype: float16,
+    perceiver: False,
 
     
     # image encoder settings
@@ -13,8 +16,7 @@
     adapter_config: {"mlp": {"adapter_type": "normal", "downsample_factor": 4}, "adapter_switch": True, "hidden_act": "rational:relu" },
 
     
-
- # train settings 
+    # train settings 
     batch_size: 256,
     train_steps: 150000,
     lr: 8.0e-4,

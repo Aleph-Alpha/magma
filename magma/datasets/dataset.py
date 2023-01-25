@@ -119,10 +119,11 @@ class ImgCptDataset(Dataset):
     def __getitem__(
         self, idx
     ) -> Tuple[TensorType["b", "c", "h", "w"], TensorType["b", "s"]]:
-        if self.load_data_in_memory: 
-            img_data = self.data[self.few_shot * idx: (self.few_shot * id) + idx]
-        else: 
-            img_data = self.data[idx]
+        if self.load_data_in_memory:
+            img_data = self.data[self.few_shot *
+                                 idx: (self.few_shot * id) + idx]
+        else:
+            img_data = self.data[0]
         try:
             try:
                 img_paths = [self.data_dir / img["image_path"]
@@ -143,11 +144,11 @@ class ImgCptDataset(Dataset):
             text = ""
             for i, p in enumerate(img_paths):
                 img = self.transforms(Image.open(p))
-                print(img.shape)
+
                 images.append(img)
                 caption = random.choice(img_data[i]["captions"])
                 text += f'<|image|> {caption} '
-            
+
             caption_tensor = self.tokenizer.encode(
                 text,
                 return_tensors="pt",

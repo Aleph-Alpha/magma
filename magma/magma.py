@@ -9,6 +9,7 @@ from transformers.file_utils import ModelOutput
 from magma.config import MultimodalConfig
 from .perceiver_resampler import PerceiverResampler
 from .cross_attention import GatedCrossAttentionBlock
+from activations.torch import Rational
 
 from magma.utils import get_tokenizer
 from .language_model import get_gptj
@@ -20,10 +21,10 @@ from .adapters import (
 )
 from .image_prefix import ImagePrefix
 from .sampling import generate
-from .utils import build_labels, is_url, print_main, download_checkpoint
+from .utils import build_labels, is_url, print_main, download_checkpoint, freeze_rational_clip
 from .image_input import ImageInput
 from .transforms import get_transforms
-import os
+import inspect
 # ------------------------- Magma main class ----------------------------------
 
 
@@ -44,16 +45,14 @@ class Magma(nn.Module):
 
         self.tokenizer = get_tokenizer(
             "gpt2", sequence_length=self.seq_len)
-        self.tokenizer.add_special_tokens({"additional_special_tokens":["<|image|>"]})
 
         self.image_token = self.tokenizer.cls_token_id
         self.eos_token = self.tokenizer.eos_token_id
         self.lm.config.pad_token_id = self.tokenizer.eos_token_id
-        self.lm.config.img_token_id = self.tokenizer.encode("<|image|>")[0]
+
         self.lm.resize_token_embeddings(len(self.tokenizer))
         self.word_embedding = self.lm.transformer.wte  # .to(device)
         self.transformer = self.lm.transformer.h
-        self.cross_attention_layers = []
 
         # adapter settings
         self.mlp_adapter_added, self.attn_adapter_added = False, False
@@ -74,6 +73,10 @@ class Magma(nn.Module):
 
         # add cross attention
         if config.cross_attention_config:
+            self.cross_attention_layers = []
+            self.tokenizer.add_special_tokens(
+                {"additional_special_tokens": ["<|image|>"]})
+            self.lm.config.img_token_id = self.tokenizer.encode("<|image|>")[0]
             self.perceiver_resampler = PerceiverResampler(
                 self.image_prefix.encoder_out_dim,
                 n_latents=config.cross_attention_config['n_latents'],
@@ -107,12 +110,13 @@ class Magma(nn.Module):
             for name, param in self.lm.named_parameters():  # freeze lm weights
                 if config.adapter_config and "adapter" in name and not config.adapter_config.get('freeze', False):
                     param.requires_grad = True
+                else:
+                    param.requires_grad = False
 
         if config.freeze_img_encoder:
             if config.rational_image_encoder:
-                for name, param in self.image_prefix.enc.named_parameters():
-                    if not 'numerator' in name and not 'denominator' in name:
-                        param.requires_grad = False
+                self.image_prefix.enc = freeze_rational_clip(
+                    self.image_prefix.enc)
             else:
                 for param in self.image_prefix.enc.parameters():
                     param.requires_grad = False
@@ -281,7 +285,7 @@ class Magma(nn.Module):
         images: TensorType["b", "n", "t", "c", "h", "w"] = None,
         captions: Optional[TensorType["b", "seq"]] = None,
         output_hidden_states: bool = False,
-        input_embeddings: TensorType["b",'n','t', "s", "d"] = None,
+        input_embeddings: TensorType["b", 'n', 't', "s", "d"] = None,
     ) -> ModelOutput:
 
         assert captions is not None, "Must provide captions in training"
@@ -295,8 +299,8 @@ class Magma(nn.Module):
         if input_embeddings is None:
             input_embeddings = self.image_prefix(images)
 
-        if images.dim == 5: 
-            images = images[:,:,None,:,:,:] # Add Times Dimension
+        if images.dim == 5:
+            images = images[:, :, None, :, :, :]  # Add Times Dimension
 
         word_embeddings = self.word_embedding(captions)
 
@@ -314,25 +318,25 @@ class Magma(nn.Module):
 
                 x_attn_block.perceiver_pipe(
                     visual_features, media_mask=media_mask)
-                
+
             lm_outputs = self.lm(
                 inputs_embeds=input_embeddings,
                 output_hidden_states=output_hidden_states,
             )
-            
-        else: 
+
+        else:
             labels = build_labels(
                 input_embeddings, captions, self.eos_token
             )  # build labels from input_embeddings
             # forward joined embeddings through lm
             input_embeddings = torch.cat(
-            (
-                input_embeddings,
-                word_embeddings[:, : -input_embeddings.shape[1], :],
-            ),  # remove padding in the word embedding before concatenating
-            dim=1,
-        )
-            
+                (
+                    input_embeddings,
+                    word_embeddings[:, : -input_embeddings.shape[1], :],
+                ),  # remove padding in the word embedding before concatenating
+                dim=1,
+            )
+
             lm_outputs = self.lm(
                 inputs_embeds=input_embeddings,
                 labels=labels,
@@ -347,7 +351,7 @@ class Magma(nn.Module):
         Loads a model checkpoint from disk / downloads from url if not present
         """
 
-        checkpoint_url = 'https://bit.ly/aleph-alpha-magma-download'
+        checkpoint_url = 'https://bit.ly/aleph-alpha-download'
 
         if exists(checkpoint_path) == False:
             print_main(
@@ -356,7 +360,7 @@ class Magma(nn.Module):
                                 save_as=checkpoint_path)
 
         model = cls(config=config_path)
-        sd = torch.load(checkpoint_path, map_location=torch.device(device))
+        sd = torch.load(checkpoint_path, map_location=torch.device("cpu"))
         if "module" in sd.keys():
             sd = sd["module"]
 
@@ -364,5 +368,5 @@ class Magma(nn.Module):
         model.load_state_dict(sd, strict=False)
         print_main("magma successfully loaded")
 
-        model  # .half()  # .eval()  # .to(device).eval()
+        model.half()  # .half()  # .eval()  # .to(device).eval()
         return model

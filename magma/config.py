@@ -64,6 +64,7 @@ class MultimodalConfig:
     tokenizer_name: str = "gpt2"
     lm_name: str = "EleutherAI/gpt-j-6B"
     from_checkpoint: bool = False
+    magma_checkpoint_path: str = None
     image_seq_len: int = 2
     pretrained_img_encoder: bool = False
     seq_len: int = None
@@ -133,7 +134,6 @@ class MultimodalConfig:
             }
         self.deepspeed_config_params = {
             "train_batch_size": self.batch_size,
-            # "train_micro_batch_size_per_gpu": self.train_micro_batch_size_per_gpu,
             "gradient_accumulation_steps": self.gradient_accumulation_steps,
             "gradient_clipping": self.gradient_clipping,
             "fp16": {"enabled": True, "loss_scale_window": 250},
@@ -144,8 +144,6 @@ class MultimodalConfig:
                 "offload_optimizer": {
                     "device": "cpu",
                 },
-                "contiguous_gradients": True,
-                "overlap_comm": True
             },
 
         }

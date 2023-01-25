@@ -2,8 +2,8 @@
     name: Switch_Rational_Relu,
     #  magma settings
     from_checkpoint: False, 
-    dtype: float16,
-    # perceiver: True,
+    # dtype: float16,
+    perceiver: False,
 
     
     # image encoder settings
@@ -12,11 +12,11 @@
     rational_image_encoder: False,
 
     # adapter settings
-    # adapter_config: {"mlp": {"adapter_type": "normal", "downsample_factor": 4}, "adapter_switch": True, "hidden_act": "rational:relu" },
+    adapter_config: {"mlp": {"adapter_type": "normal", "downsample_factor": 4}, "adapter_switch": True, "hidden_act": "rational:relu" },
 
     
     # train settings 
-    batch_size: 4,
+    batch_size: 2,
     train_steps: 500,
     lr: 8.0e-4,
     min_lr: 0.0,
@@ -35,7 +35,7 @@
     train_dataset_name: 'conceptual_captions',
     train_dataset_dir: '/home/ml-mmeuer/adaptable_magma/magma/datasets/coco_train_val',
     eval_dataset_name: 'coco',
-    eval_dataset_dir: '/mnt/localdisk/coco_data',
+    eval_dataset_dir: '/home/ml-mmeuer/adaptable_magma/magma/datasets/coco_train_val',
     
     save: "/home/ml-mmeuer/magma/model_checkpoints/multimodal_transformer_rn50x16",
     load: "/mnt/shared_vol/checkpoints/multimodal_transformer_rn50x16",

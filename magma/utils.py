@@ -7,6 +7,8 @@ import wandb
 import os
 import yaml
 import torch
+from activations.torch import Rational
+from clip.model import Bottleneck
 from collections import defaultdict
 from torchtyping import TensorType
 import gdown
@@ -346,7 +348,7 @@ def to_cuda_half(*args):
 
 
 def build_labels(
-    input_embeddings: TensorType["b","n","t", "s", "d"],
+    input_embeddings: TensorType["b", "n", "t", "s", "d"],
     captions: TensorType["b", "s"],
     eos_token,
 ) -> TensorType["b", "s"]:
@@ -359,7 +361,7 @@ def build_labels(
     """
     shape = input_embeddings.shape[:2]  # b, s
     local_rank, rank, world_size = get_world_info()
-    print(shape[1])
+
     assert captions.shape[1] >= shape[1]
     # make sure to add masked embedding tokens in the appropriate locations in the labels
     embedding_tokens = torch.zeros(
@@ -393,3 +395,24 @@ def cast_dtype(typestring):
     except:
         KeyError(
             f"Invalid dtype {typestring}. Valid dtypes are {TORCH_DTYPES.keys()}")
+
+
+def freeze_rational_clip(enc):
+    for child in enc.children():
+        if isinstance(child, torch.nn.Sequential):
+            for seq_child in child.children():
+                if isinstance(seq_child, Bottleneck):
+                    for bot_params in seq_child.children():
+                        if isinstance(bot_params, (Rational)):
+                            for param in bot_params.parameters():
+                                param.requires_grad = True
+                        else:
+                            for param in bot_params.parameters():
+                                param.requires_grad = False
+                else:
+                    for param in seq_child.parameters():
+                        param.requires_grad = False
+        else:
+            for param in child.parameters():
+                param.requires_grad = False
+    return enc

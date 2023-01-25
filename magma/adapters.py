@@ -111,17 +111,18 @@ class Adapter(nn.Module):
         device = f'cuda:{local_rank}'
         self.device = device
         if adapter_switch:
-            self.switch_logits = nn.Parameter(torch.tensor(
-                initial_logits).to(f'cuda:{local_rank}'))
-            self.switch_temp = nn.Parameter(torch.tensor(
-                initial_temperature).to(device))
+            self.switch_logits = nn.Parameter(torch.tensor(initial_logits))
+
+            self.switch_temp = nn.Parameter(torch.tensor(initial_temperature))
+
             self.register_parameter("switch_logits", self.switch_logits)
             self.register_parameter("switch_temp", self.switch_temp)
-            self.gumbel = torch.distributions.Gumbel(torch.tensor(
-                0.).to(device), torch.tensor(1.).to(device))
+            self.gumbel = torch.distributions.Gumbel(
+                torch.tensor(0.), torch.tensor(1.))
+
             self.fixed_idx = fixed_idx
-        self.adapter = nn.Sequential(*layers).to(device)
-        self.adapter = convert_pytorch_model_to_rational(self.adapter)
+        self.adapter = nn.Sequential(*layers)
+
         self.adapter.apply(self.init_weights)
 
     def init_weights(self, m: nn.Module, std=1e-3):
@@ -152,13 +153,13 @@ class Adapter(nn.Module):
 
             batch_size, sequence_length, num_classes, hidden_dim_size = stacked.size()
             if not self.training:
-                return x[:, :, self.fixed_idx, :]
+                return stacked[:, :, self.fixed_idx, :]
             sample_size = [batch_size, num_classes]
             g = self.gumbel.sample(sample_size).to(
                 device=self.device)
 
             weights = torch.softmax(
-                (g + self.switch_logits)/self.switch_temp, dim=1)  # .half()
+                (g + self.switch_logits)/self.switch_temp, dim=1).to(x.dtype)  # .half()
 
             y = torch.einsum('bsnd, bn -> bsd', stacked, weights)
 

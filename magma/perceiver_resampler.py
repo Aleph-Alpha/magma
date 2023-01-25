@@ -5,7 +5,6 @@ from einops import rearrange
 from einops_exts import rearrange_many
 
 
-
 class PerceiverAttentionBlock(nn.Module):
     def __init__(
         self,
@@ -57,8 +56,10 @@ class PerceiverResampler(nn.Module):
         time: int = 1,
     ):
         super().__init__()
-        self.register_parameter("learned_latents", nn.Parameter(torch.randn(n_latents, token_dim)))
-        self.register_parameter('time_embeddings', nn.Parameter(torch.rand(time, 1, token_dim)))  
+        self.register_parameter("learned_latents", nn.Parameter(
+            torch.randn(n_latents, token_dim)))
+        self.register_parameter('time_embeddings', nn.Parameter(
+            torch.rand(time, 1, token_dim)))
         self.flatten = torch.nn.Flatten()
         self.perceiver_attention_layers = nn.ModuleList([])
         for _ in range(num_layers):
@@ -74,7 +75,6 @@ class PerceiverResampler(nn.Module):
             x = x[:, None, None, :, :]
 
         batch_size, number_of_images, time, sequence_length, token_dim = x.size()
-        print(x.shape)
         x = rearrange(x, "b n t s d -> b n (t s) d")
         latents = self.learned_latents.repeat(
             batch_size, number_of_images, 1, 1)

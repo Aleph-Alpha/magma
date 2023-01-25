@@ -60,6 +60,7 @@ def eval_step(config, eval_loader, model_engine, device):
 
     for i in tqdm(range(config.eval_steps), "evaluating..."):
         images, captions = next(eval_loader)
+        # images, captions = next(eval_loader)
         images, captions = images.half().to(device), captions.to(device)
         if config.run_blind:
             images = torch.zeros_like(images)

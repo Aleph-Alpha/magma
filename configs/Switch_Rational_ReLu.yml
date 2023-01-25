@@ -1,7 +1,10 @@
+# Creates A Version Witch Adapter Switch and Rationals 
 {
-    name: Switch_Rational_Random_Freeze_Adapter_From_Checkpoint,
+    name: Switch_Rational_Relu,
     #  magma settings
-    from_checkpoint: True, 
+    from_checkpoint: False, 
+    # dtype: float16,
+    perceiver: False,
 
     
     # image encoder settings
@@ -10,11 +13,10 @@
     rational_image_encoder: False,
 
     # adapter settings
-    adapter_config: {"mlp": {"adapter_type": "normal", "downsample_factor": 4}, "adapter_switch": True, "hidden_act": "rational:relu", freeze:True },
+    adapter_config: {"mlp": {"adapter_type": "normal", "downsample_factor": 4}, "adapter_switch": True, "hidden_act": "rational:relu" },
 
     
-
- # train settings 
+    # train settings 
     batch_size: 256,
     train_steps: 150000,
     lr: 8.0e-4,

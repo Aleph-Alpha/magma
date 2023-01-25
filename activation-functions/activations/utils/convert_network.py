@@ -31,7 +31,7 @@ def _convert_pytorch_model_to_rational(m, version, cuda, approx_func, submodule_
         if is_activation:
             # setattr(m, n_c, nn.ReLU())
             setattr(m, n_c, RationalPyTorch(cuda=cuda, trainable=True, train_numerator=True,
-                    train_denominator=True, version="A", approx_func="relu"))
+                    train_denominator=True, version="A", approx_func=approx_func))
             # m._modules[n_c] = _convert_pytorch_layer(
             #     c, version=version, cuda=cuda, approx_func=approx_func)
     if submodule_class:
