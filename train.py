@@ -211,11 +211,11 @@ if __name__ == "__main__":
 
             model_engine.train()
 
-        # ##### Save model
-        # if global_step % config.save_every == 0:
-        #     if config.save is not None:
-        #         save_model(model_engine, config.save, global_step)
-        #         print_main(f"saving model at step {global_step}")
+        # Save model
+        if global_step % config.save_every == 0:
+            if config.save is not None:
+                save_model(model_engine, config.save, global_step)
+                print_main(f"saving model at step {global_step}")
 
     # Save model after training is finished
     if config.save is not None:
