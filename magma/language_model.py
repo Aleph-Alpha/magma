@@ -11,8 +11,10 @@ LANGUAGE_MODELS = [
 
 
 def gptj_config():
-    config = AutoConfig.from_pretrained(
-        "/home/ml-mmeuer/adaptable_magma/model_checkpoints/gpt-neo-1.3B", local_files_only=True)
+    # config = AutoConfig.from_pretrained(
+    #     "/home/ml-mmeuer/adaptable_magma/model_checkpoints/gpt-neo-1.3B", local_files_only=True)
+    config = AutoConfig.from_pretrained("EleutherAI/gpt-neo-2.7B")
+
     config.attention_layers = ["global"] * 28
     config.attention_types = [["global"], 28]
     config.num_layers = 28
@@ -33,15 +35,15 @@ def get_gptj(
     """
     Loads GPTJ language model from HF
     """
+    print_main("Loading GPTJ language model...")
     config = gptj_config()
     config.gradient_checkpointing = gradient_checkpointing
     if gradient_checkpointing:
         config.use_cache = False
     config.model_device = "cpu"
-
-    with no_init_weights():
-        # with init_empty_weights():
-        print_main("Fetching GPTJ language model...")
-        model = GPTNeoForCausalLM(config=config)
-    print("Done Fetching Model ... ")
+    if from_pretrained:
+        raise NotImplemented("GPTJ pretrained not implemented")
+    else:
+        with no_init_weights():
+            model = GPTNeoForCausalLM(config=config)
     return model
