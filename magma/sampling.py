@@ -94,7 +94,7 @@ def generate(
 
         # filter / temperature sample
         if temperature == 0.0:
-            next_token = torch.argmax(logits, dim=-1)
+            next_token = torch.argmax(logits, dim=-1).unsqueeze(1)
         else:
             if top_k > 0:
                 logits = top_k_filter(logits, k=top_k)
