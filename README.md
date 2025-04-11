@@ -36,8 +36,6 @@ Paper on arXiv: https://arxiv.org/abs/2112.05253
 
 In this repository we share the main parts of the codebase for training and inference of our MAGMA VL model. The main use of the repo is for downloading our pretrained weights and interacting with the model. We include a script for data parallel training with Deepspeed for finetuning our models or training a MAGMA model from scratch.
 
-NOTE: The freely available model from this repo is only a demo. For the latest multimodal and multilingual models from Aleph Alpha check out our [website](https://app.aleph-alpha.com "Aleph Alpha").
-
 ## Installation
 
 Make sure PyTorch (Ver >= 1.9.0) and Torchvision are installed. See https://pytorch.org/get-started/locally/.
@@ -61,9 +59,7 @@ pip install -r requirements.txt
 
 ## Checkpoint
 
-We also publish a model checkpoint that has been used for the publication. It is hosted on our infrastructure and downloads automatically. It can be downloaded manually here: https://bit.ly/aleph_alpha_magma_download 
-	
-This checkpoint can also be [played around with on a space](https://huggingface.co/spaces/EleutherAI/magma) managed by [Heath Mitchell](https://github.com/Heath123), [AK](https://mobile.twitter.com/ak92501), and [Stella Biderman](https://stellabiderman.com). (This is a 3rd party space, not managed by Aleph Alpha.)
+We also publish a model checkpoint that has been used for the publication. It is hosted on our infrastructure and downloads automatically. It can be downloaded manually here: https://huggingface.co/Aleph-Alpha/magma-research 
 
 ## Loading a model for inference
 
